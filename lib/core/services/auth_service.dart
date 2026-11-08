@@ -1,5 +1,9 @@
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../network/api_client.dart';
+import 'study_repository.dart';
 
 class UserProfile {
   final String id;
@@ -19,58 +23,350 @@ class UserProfile {
       name: json['name']?.toString() ?? '',
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'email': email,
+      'name': name,
+    };
+  }
+}
+
+class AuthResult {
+  final bool success;
+  final String message;
+  final String? otpPreview;
+  final bool deliveredViaSmtp;
+  final bool requiresAccountPickerFallback;
+
+  const AuthResult({
+    required this.success,
+    required this.message,
+    this.otpPreview,
+    this.deliveredViaSmtp = false,
+    this.requiresAccountPickerFallback = false,
+  });
 }
 
 class AuthService extends ChangeNotifier {
   static final AuthService instance = AuthService._internal();
   AuthService._internal();
 
+  static const String _tokenKey = 'recall_access_token_v1';
+  static const String _refreshTokenKey = 'recall_refresh_token_v1';
+  static const String _userKey = 'recall_user_profile_v1';
+  static const String _onboardingKey = 'recall_has_seen_onboarding_v1';
+
   UserProfile? _currentUser;
   String? _refreshToken;
+  bool _hasSeenOnboarding = false;
   bool _isLoading = false;
+  String? _lastErrorMessage;
 
   UserProfile? get currentUser => _currentUser;
   String? get refreshToken => _refreshToken;
-  bool get isAuthenticated => _currentUser != null;
+  bool get isAuthenticated => _currentUser != null && ApiClient.instance.isAuthenticated;
+  bool get hasSeenOnboarding => _hasSeenOnboarding;
   bool get isLoading => _isLoading;
+  String? get lastErrorMessage => _lastErrorMessage;
 
-  Future<bool> login({required String email, required String password}) async {
+  /// Restores persisted session tokens, user profile, onboarding state, and cached study data on startup.
+  Future<void> initializeSession() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      _hasSeenOnboarding = prefs.getBool(_onboardingKey) ?? false;
+
+      final savedToken = prefs.getString(_tokenKey);
+      final savedRefresh = prefs.getString(_refreshTokenKey);
+      final savedUserJson = prefs.getString(_userKey);
+
+      if (savedToken != null &&
+          savedToken.isNotEmpty &&
+          savedUserJson != null &&
+          savedUserJson.isNotEmpty) {
+        final decoded = jsonDecode(savedUserJson);
+        if (decoded is Map) {
+          ApiClient.instance.setAuthToken(savedToken);
+          _refreshToken = savedRefresh;
+          _currentUser = UserProfile.fromJson(Map<String, dynamic>.from(decoded));
+          await StudyRepository.instance.loadFromCache();
+          notifyListeners();
+
+          // Sync fresh profile & decks from cloud in the background
+          _verifyAndSyncBackground();
+        }
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _verifyAndSyncBackground() async {
+    final meRes = await ApiClient.instance.get('/auth/me');
+    if (meRes.success && meRes.data is Map) {
+      final updatedUser = UserProfile.fromJson(Map<String, dynamic>.from(meRes.data as Map));
+      _currentUser = updatedUser;
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_userKey, jsonEncode(updatedUser.toJson()));
+      await StudyRepository.instance.fetchAllFromCloud();
+      notifyListeners();
+    } else if (meRes.statusCode == 401 && _refreshToken != null) {
+      final refreshRes = await ApiClient.instance.post('/auth/refresh', {
+        'rc_rt': _refreshToken,
+      });
+      if (refreshRes.success && refreshRes.data is Map) {
+        final newToken = (refreshRes.data as Map)['rc_at']?.toString();
+        if (newToken != null && newToken.isNotEmpty) {
+          ApiClient.instance.setAuthToken(newToken);
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString(_tokenKey, newToken);
+          await StudyRepository.instance.fetchAllFromCloud();
+          notifyListeners();
+          return;
+        }
+      }
+      // If refresh token is also expired/revoked, log out cleanly
+      await logout();
+    } else {
+      await StudyRepository.instance.fetchAllFromCloud();
+    }
+  }
+
+  Future<void> markOnboardingCompleted() async {
+    _hasSeenOnboarding = true;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_onboardingKey, true);
+    } catch (_) {}
+    notifyListeners();
+  }
+
+  Future<void> _persistAuthSession({
+    required String accessToken,
+    required String? refreshToken,
+    required UserProfile user,
+  }) async {
+    ApiClient.instance.setAuthToken(accessToken);
+    _refreshToken = refreshToken;
+    _currentUser = user;
+    _hasSeenOnboarding = true;
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_tokenKey, accessToken);
+      if (refreshToken != null) {
+        await prefs.setString(_refreshTokenKey, refreshToken);
+      }
+      await prefs.setString(_userKey, jsonEncode(user.toJson()));
+      await prefs.setBool(_onboardingKey, true);
+    } catch (_) {}
+  }
+
+  Future<AuthResult> loginWithDetails({
+    required String email,
+    required String password,
+  }) async {
     _isLoading = true;
+    _lastErrorMessage = null;
     notifyListeners();
 
     final res = await ApiClient.instance.post('/auth/login', {
-      'email': email,
+      'email': email.trim().toLowerCase(),
       'password': password,
     });
 
     _isLoading = false;
 
-    if (res.success && res.data != null) {
-      final token = res.data['rc_at'] ?? res.data['token'];
-      final rt = res.data['rc_rt'] ?? res.data['refreshToken'];
-      final userMap = res.data['user'];
+    if (res.success && res.data is Map) {
+      final dataMap = Map<String, dynamic>.from(res.data as Map);
+      final token = dataMap['rc_at']?.toString() ?? dataMap['token']?.toString();
+      final rt = dataMap['rc_rt']?.toString() ?? dataMap['refreshToken']?.toString();
+      final userMap = dataMap['user'];
 
-      if (token != null) {
-        ApiClient.instance.setAuthToken(token.toString());
-      }
-      if (rt != null) {
-        _refreshToken = rt.toString();
-      }
-      if (userMap != null && userMap is Map) {
-        _currentUser = UserProfile.fromJson(Map<String, dynamic>.from(userMap));
-      }
-      notifyListeners();
-      return true;
-    } else {
-      // For quick offline/demo mode if live server is temporarily unreachable during local dev:
-      if (email.isNotEmpty && password.isNotEmpty) {
-        _currentUser = UserProfile(id: 'demo_user', email: email, name: email.split('@').first);
+      if (token != null && userMap is Map) {
+        final user = UserProfile.fromJson(Map<String, dynamic>.from(userMap));
+        await _persistAuthSession(
+          accessToken: token,
+          refreshToken: rt,
+          user: user,
+        );
+        await StudyRepository.instance.fetchAllFromCloud();
         notifyListeners();
-        return true;
+        return AuthResult(
+          success: true,
+          message: res.message ?? 'Welcome back, ${user.name}!',
+        );
+      }
+    }
+
+    final errorMsg = res.message ?? 'Invalid email or password.';
+    _lastErrorMessage = errorMsg;
+    notifyListeners();
+    return AuthResult(success: false, message: errorMsg);
+  }
+
+  Future<bool> login({required String email, required String password}) async {
+    final result = await loginWithDetails(email: email, password: password);
+    return result.success;
+  }
+
+  Future<AuthResult> requestRegistrationOtp({
+    required String name,
+    required String email,
+    required String password,
+  }) async {
+    _isLoading = true;
+    _lastErrorMessage = null;
+    notifyListeners();
+
+    final res = await ApiClient.instance.post('/auth/register/request-otp', {
+      'name': name.trim(),
+      'email': email.trim().toLowerCase(),
+      'password': password,
+    });
+
+    _isLoading = false;
+
+    if (res.success) {
+      String? otpPreview;
+      bool deliveredViaSmtp = false;
+      if (res.data is Map) {
+        final dataMap = Map<String, dynamic>.from(res.data as Map);
+        otpPreview = dataMap['otpPreview']?.toString();
+        deliveredViaSmtp = dataMap['deliveredViaSmtp'] == true;
       }
       notifyListeners();
-      return false;
+      return AuthResult(
+        success: true,
+        message: res.message ?? 'Verification code sent to your email.',
+        otpPreview: otpPreview,
+        deliveredViaSmtp: deliveredViaSmtp,
+      );
     }
+
+    final errorMsg = res.message ?? 'Failed to request verification code.';
+    _lastErrorMessage = errorMsg;
+    notifyListeners();
+    return AuthResult(success: false, message: errorMsg);
+  }
+
+  Future<AuthResult> verifyRegistrationOtp({
+    required String email,
+    required String otp,
+  }) async {
+    _isLoading = true;
+    _lastErrorMessage = null;
+    notifyListeners();
+
+    final res = await ApiClient.instance.post('/auth/register/verify-otp', {
+      'email': email.trim().toLowerCase(),
+      'otp': otp.trim(),
+    });
+
+    _isLoading = false;
+
+    if (res.success && res.data is Map) {
+      final dataMap = Map<String, dynamic>.from(res.data as Map);
+      final token = dataMap['rc_at']?.toString() ?? dataMap['token']?.toString();
+      final rt = dataMap['rc_rt']?.toString() ?? dataMap['refreshToken']?.toString();
+      final userMap = dataMap['user'];
+
+      if (token != null && userMap is Map) {
+        final user = UserProfile.fromJson(Map<String, dynamic>.from(userMap));
+        await _persistAuthSession(
+          accessToken: token,
+          refreshToken: rt,
+          user: user,
+        );
+        await StudyRepository.instance.fetchAllFromCloud();
+        notifyListeners();
+        return AuthResult(
+          success: true,
+          message: res.message ?? 'Email verified and account created!',
+        );
+      }
+    }
+
+    final errorMsg = res.message ?? 'Invalid or expired verification code.';
+    _lastErrorMessage = errorMsg;
+    notifyListeners();
+    return AuthResult(success: false, message: errorMsg);
+  }
+
+  Future<AuthResult> signInWithGoogle({
+    String? selectedEmail,
+    String? selectedName,
+  }) async {
+    _isLoading = true;
+    _lastErrorMessage = null;
+    notifyListeners();
+
+    String? googleEmail = selectedEmail;
+    String? googleName = selectedName;
+    String? googleId;
+
+    if (googleEmail == null) {
+      try {
+        final googleSignIn = GoogleSignIn(scopes: ['email', 'profile']);
+        await googleSignIn.signOut().catchError((_) => null);
+        final account = await googleSignIn.signIn();
+        if (account == null) {
+          _isLoading = false;
+          notifyListeners();
+          return const AuthResult(
+            success: false,
+            message: 'Google Sign-In was cancelled.',
+          );
+        }
+        googleEmail = account.email;
+        googleName = account.displayName?.trim().isNotEmpty == true
+            ? account.displayName!
+            : account.email.split('@').first;
+        googleId = account.id;
+      } catch (_) {
+        _isLoading = false;
+        notifyListeners();
+        return const AuthResult(
+          success: false,
+          message: 'Choose a Google account to continue.',
+          requiresAccountPickerFallback: true,
+        );
+      }
+    }
+
+    final res = await ApiClient.instance.post('/auth/google', {
+      'email': googleEmail.trim().toLowerCase(),
+      'name': (googleName ?? googleEmail.split('@').first).trim(),
+      if (googleId != null) 'googleId': googleId,
+    });
+
+    _isLoading = false;
+
+    if (res.success && res.data is Map) {
+      final dataMap = Map<String, dynamic>.from(res.data as Map);
+      final token = dataMap['rc_at']?.toString();
+      final rt = dataMap['rc_rt']?.toString();
+      final userMap = dataMap['user'];
+
+      if (token != null && userMap is Map) {
+        final user = UserProfile.fromJson(Map<String, dynamic>.from(userMap));
+        await _persistAuthSession(
+          accessToken: token,
+          refreshToken: rt,
+          user: user,
+        );
+        await StudyRepository.instance.fetchAllFromCloud();
+        notifyListeners();
+        return AuthResult(
+          success: true,
+          message: 'Signed in as ${user.email}',
+        );
+      }
+    }
+
+    final errorMsg = res.message ?? 'Google Sign-In failed. Please try again.';
+    _lastErrorMessage = errorMsg;
+    notifyListeners();
+    return AuthResult(success: false, message: errorMsg);
   }
 
   Future<bool> register({
@@ -79,43 +375,43 @@ class AuthService extends ChangeNotifier {
     required String password,
   }) async {
     _isLoading = true;
+    _lastErrorMessage = null;
     notifyListeners();
 
     final res = await ApiClient.instance.post('/auth/register', {
-      'name': name,
-      'email': email,
+      'name': name.trim(),
+      'email': email.trim().toLowerCase(),
       'password': password,
     });
 
     _isLoading = false;
 
-    if (res.success && res.data != null) {
-      final token = res.data['rc_at'] ?? res.data['token'];
-      final rt = res.data['rc_rt'] ?? res.data['refreshToken'];
-      final userMap = res.data['user'];
+    if (res.success && res.data is Map) {
+      final dataMap = Map<String, dynamic>.from(res.data as Map);
+      final token = dataMap['rc_at']?.toString() ?? dataMap['token']?.toString();
+      final rt = dataMap['rc_rt']?.toString() ?? dataMap['refreshToken']?.toString();
+      final userMap = dataMap['user'];
 
-      if (token != null) {
-        ApiClient.instance.setAuthToken(token.toString());
+      if (token != null && userMap is Map) {
+        final user = UserProfile.fromJson(Map<String, dynamic>.from(userMap));
+        await _persistAuthSession(
+          accessToken: token,
+          refreshToken: rt,
+          user: user,
+        );
+        await StudyRepository.instance.fetchAllFromCloud();
+        notifyListeners();
+        return true;
       }
-      if (rt != null) {
-        _refreshToken = rt.toString();
-      }
-      if (userMap != null && userMap is Map) {
-        _currentUser = UserProfile.fromJson(Map<String, dynamic>.from(userMap));
-      }
-      notifyListeners();
-      return true;
-    } else {
-      // Demo fallback
-      _currentUser = UserProfile(id: 'demo_user', email: email, name: name);
-      notifyListeners();
-      return true;
     }
+
+    _lastErrorMessage = res.message ?? 'Registration failed.';
+    notifyListeners();
+    return false;
   }
 
   Future<void> logout() async {
     if (_refreshToken != null) {
-      // Best-effort remote revocation
       try {
         await ApiClient.instance.post('/auth/logout', {'rc_rt': _refreshToken});
       } catch (_) {}
@@ -123,6 +419,16 @@ class AuthService extends ChangeNotifier {
     ApiClient.instance.clearAuthToken();
     _currentUser = null;
     _refreshToken = null;
+    _lastErrorMessage = null;
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_tokenKey);
+      await prefs.remove(_refreshTokenKey);
+      await prefs.remove(_userKey);
+    } catch (_) {}
+
+    await StudyRepository.instance.clearLocalState();
     notifyListeners();
   }
 }

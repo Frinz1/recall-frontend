@@ -29,10 +29,13 @@ class _StudySessionScreenState extends State<StudySessionScreen> {
   int _hardCount = 0;
   int _goodCount = 0;
   int _easyCount = 0;
+  String? _sessionId;
+  late DateTime _sessionStartTime;
 
   @override
   void initState() {
     super.initState();
+    _sessionStartTime = DateTime.now();
     if (widget.onlyDueCards) {
       _sessionCards = widget.deck.cards.where((c) => c.isDue).toList();
       if (_sessionCards.isEmpty) {
@@ -41,6 +44,12 @@ class _StudySessionScreenState extends State<StudySessionScreen> {
     } else {
       _sessionCards = List.from(widget.deck.cards);
     }
+
+    StudyRepository.instance.startStudySession(widget.deck.id).then((id) {
+      if (mounted) {
+        _sessionId = id;
+      }
+    });
   }
 
   void _handleRating(RecallRating rating) {
@@ -79,11 +88,19 @@ class _StudySessionScreenState extends State<StudySessionScreen> {
   }
 
   void _showCompletionDialog() {
+    final total = _sessionCards.length;
+    final durationSec = DateTime.now().difference(_sessionStartTime).inSeconds;
+    StudyRepository.instance.completeStudySession(
+      sessionId: _sessionId,
+      cardsReviewed: total,
+      correctCount: _goodCount + _easyCount,
+      durationSeconds: durationSec < 1 ? 1 : durationSec,
+    );
+
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (ctx) {
-        final total = _sessionCards.length;
         final retention = total > 0
             ? (((_goodCount + _easyCount) / total) * 100).round()
             : 100;

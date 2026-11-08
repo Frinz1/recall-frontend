@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import '../../core/models/flashcard_model.dart';
+import '../../core/services/auth_service.dart';
 import '../../core/services/study_repository.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/widgets/app_button.dart';
+import '../../core/widgets/toast_feedback.dart';
 import '../deck/deck_detail_screen.dart';
 import '../study/study_session_screen.dart';
+import '../subject/subject_list_screen.dart';
 
 class DashboardScreen extends StatelessWidget {
   final VoidCallback onNavigateToDecks;
@@ -51,7 +54,7 @@ class DashboardScreen extends StatelessWidget {
             ),
             actions: [
               Container(
-                margin: const EdgeInsets.only(right: 16),
+                margin: const EdgeInsets.only(right: 4),
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
                   color: AppColors.bgSurface2,
@@ -69,6 +72,44 @@ class DashboardScreen extends StatelessWidget {
                   ],
                 ),
               ),
+              IconButton(
+                icon: repo.isSyncing
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: AppColors.primaryLight,
+                        ),
+                      )
+                    : const Icon(Icons.cloud_sync_rounded, size: 20),
+                tooltip: 'Sync with Cloud',
+                onPressed: repo.isSyncing
+                    ? null
+                    : () async {
+                        await repo.fetchAllFromCloud();
+                        if (context.mounted) {
+                          ToastFeedback.showInfo(context, 'Synced with Recall Cloud.');
+                        }
+                      },
+              ),
+              IconButton(
+                icon: const Icon(Icons.category_outlined, size: 20),
+                tooltip: 'Manage Subjects',
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const SubjectListScreen()),
+                  );
+                },
+              ),
+              IconButton(
+                icon: const Icon(Icons.logout_rounded, size: 20),
+                tooltip: 'Sign Out',
+                onPressed: () {
+                  AuthService.instance.logout();
+                },
+              ),
+              const SizedBox(width: 6),
             ],
           ),
           body: SingleChildScrollView(

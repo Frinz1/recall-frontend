@@ -76,7 +76,16 @@ class SubjectListScreen extends StatelessWidget {
                             '$deckCount flashcard decks',
                             style: AppTypography.bodySmall,
                           ),
-                          trailing: const Icon(Icons.chevron_right_rounded, color: AppColors.textMuted),
+                          trailing: IconButton(
+                            icon: const Icon(Icons.delete_outline_rounded, color: AppColors.textMuted),
+                            tooltip: 'Delete Subject',
+                            onPressed: () async {
+                              await StudyRepository.instance.deleteSubject(sub.id);
+                              if (context.mounted) {
+                                ToastFeedback.showInfo(context, 'Subject "${sub.name}" removed.');
+                              }
+                            },
+                          ),
                         ),
                       ),
                     );
@@ -165,13 +174,18 @@ class SubjectListScreen extends StatelessWidget {
                 ),
                 AppButton(
                   label: 'Create',
-                  onPressed: () {
+                  onPressed: () async {
                     final name = nameCtrl.text.trim();
                     if (name.isEmpty) return;
 
-                    // In memory / repository
                     Navigator.of(ctx).pop();
-                    ToastFeedback.showSuccess(context, 'Subject "$name" created.');
+                    await StudyRepository.instance.addSubject(
+                      name: name,
+                      colorValue: selectedColor,
+                    );
+                    if (context.mounted) {
+                      ToastFeedback.showSuccess(context, 'Subject "$name" created and synced.');
+                    }
                   },
                 ),
               ],

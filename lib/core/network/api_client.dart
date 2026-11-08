@@ -22,6 +22,8 @@ class ApiClient {
 
   String? _authToken;
 
+  String? get authToken => _authToken;
+
   void setAuthToken(String token) {
     _authToken = token;
   }
@@ -54,26 +56,39 @@ class ApiClient {
     return _send('DELETE', path);
   }
 
-  Future<ApiResponse<dynamic>> _send(String method, String path, [Map<String, dynamic>? body]) async {
+  Future<ApiResponse<dynamic>> _send(
+    String method,
+    String path, [
+    Map<String, dynamic>? body,
+  ]) async {
     final url = Uri.parse('${EnvConfig.baseUrl}$path');
 
     try {
       http.Response response;
       final encodedBody = body != null ? jsonEncode(body) : null;
+      const timeoutDuration = Duration(seconds: 15);
 
       switch (method) {
         case 'POST':
-          response = await http.post(url, headers: _headers, body: encodedBody);
+          response = await http
+              .post(url, headers: _headers, body: encodedBody)
+              .timeout(timeoutDuration);
           break;
         case 'PATCH':
-          response = await http.patch(url, headers: _headers, body: encodedBody);
+          response = await http
+              .patch(url, headers: _headers, body: encodedBody)
+              .timeout(timeoutDuration);
           break;
         case 'DELETE':
-          response = await http.delete(url, headers: _headers);
+          response = await http
+              .delete(url, headers: _headers)
+              .timeout(timeoutDuration);
           break;
         case 'GET':
         default:
-          response = await http.get(url, headers: _headers);
+          response = await http
+              .get(url, headers: _headers)
+              .timeout(timeoutDuration);
           break;
       }
 
@@ -87,15 +102,27 @@ class ApiClient {
       }
 
       if (statusCode >= 200 && statusCode < 300) {
+        final msg = decoded is Map && decoded['message'] != null
+            ? decoded['message'].toString()
+            : null;
         return ApiResponse(
           success: true,
-          data: decoded is Map ? decoded['data'] : decoded,
+          message: msg,
+          data: decoded is Map && decoded.containsKey('data') ? decoded['data'] : decoded,
           statusCode: statusCode,
         );
       } else {
-        final message = decoded is Map && decoded['message'] != null
-            ? decoded['message'].toString()
-            : 'Server error ($statusCode)';
+        String message = 'Server error ($statusCode)';
+        if (decoded is Map) {
+          if (decoded['message'] != null && decoded['message'].toString().trim().isNotEmpty) {
+            message = decoded['message'].toString();
+          } else if (decoded['errors'] is List && (decoded['errors'] as List).isNotEmpty) {
+            final firstError = (decoded['errors'] as List).first;
+            if (firstError is Map && firstError['message'] != null) {
+              message = firstError['message'].toString();
+            }
+          }
+        }
         return ApiResponse(
           success: false,
           message: message,
@@ -103,9 +130,9 @@ class ApiClient {
         );
       }
     } catch (e) {
-      return ApiResponse(
+      return const ApiResponse(
         success: false,
-        message: 'Network error: ${e.toString()}',
+        message: 'Unable to reach cloud server. Please check your internet connection.',
         statusCode: 0,
       );
     }

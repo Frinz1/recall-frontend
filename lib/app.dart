@@ -22,27 +22,35 @@ class RecallApp extends StatefulWidget {
 
 class _RecallAppState extends State<RecallApp> {
   AppFlowState _flow = AppFlowState.splash;
-  Timer? _splashTimer;
 
   @override
   void initState() {
     super.initState();
-    _splashTimer = Timer(const Duration(milliseconds: 1800), () {
-      if (!mounted) return;
-      setState(() {
-        if (AuthService.instance.isAuthenticated) {
-          _flow = AppFlowState.authenticated;
-        } else {
-          _flow = AppFlowState.onboarding;
-        }
-      });
-    });
-
+    _bootApp();
     AuthService.instance.addListener(_handleAuthChange);
+  }
+
+  Future<void> _bootApp() async {
+    await Future.wait([
+      AuthService.instance.initializeSession(),
+      Future.delayed(const Duration(milliseconds: 1800)),
+    ]);
+
+    if (!mounted) return;
+    setState(() {
+      if (AuthService.instance.isAuthenticated) {
+        _flow = AppFlowState.authenticated;
+      } else if (AuthService.instance.hasSeenOnboarding) {
+        _flow = AppFlowState.auth;
+      } else {
+        _flow = AppFlowState.onboarding;
+      }
+    });
   }
 
   void _handleAuthChange() {
     if (!mounted) return;
+    if (_flow == AppFlowState.splash) return;
     setState(() {
       if (AuthService.instance.isAuthenticated) {
         _flow = AppFlowState.authenticated;
@@ -54,7 +62,6 @@ class _RecallAppState extends State<RecallApp> {
 
   @override
   void dispose() {
-    _splashTimer?.cancel();
     AuthService.instance.removeListener(_handleAuthChange);
     super.dispose();
   }
@@ -118,6 +125,7 @@ class _RecallAppState extends State<RecallApp> {
       case AppFlowState.onboarding:
         return OnboardingScreen(
           onComplete: () {
+            AuthService.instance.markOnboardingCompleted();
             if (mounted) setState(() => _flow = AppFlowState.auth);
           },
         );

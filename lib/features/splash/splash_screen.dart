@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_typography.dart';
 import '../onboarding/onboarding_screen.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -15,31 +16,38 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderStateMixin {
-  late AnimationController _pulseController;
-  late Animation<double> _pulseAnimation;
+  late AnimationController _progressController;
+  late Animation<double> _progressAnimation;
+  late Animation<double> _fadeAnimation;
   Timer? _timer;
 
   @override
   void initState() {
     super.initState();
-    _pulseController = AnimationController(
+    _progressController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1400),
-    )..repeat(reverse: true);
+      duration: const Duration(milliseconds: 1600),
+    )..forward();
 
-    _pulseAnimation = Tween<double>(begin: 0.4, end: 1.0).animate(
-      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    _progressAnimation = Tween<double>(begin: 0.15, end: 1.0).animate(
+      CurvedAnimation(parent: _progressController, curve: Curves.easeOutCubic),
     );
 
-    // Auto navigate after splash entrance if onFinished or nextScreen provided
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _progressController,
+        curve: const Interval(0.0, 0.45, curve: Curves.easeOut),
+      ),
+    );
+
     if (widget.onFinished != null) {
-      _timer = Timer(const Duration(milliseconds: 2000), () {
+      _timer = Timer(const Duration(milliseconds: 1800), () {
         if (mounted && widget.onFinished != null) {
           widget.onFinished!();
         }
       });
     } else if (widget.nextScreen != null) {
-      _timer = Timer(const Duration(milliseconds: 2000), _checkSessionAndNavigate);
+      _timer = Timer(const Duration(milliseconds: 1800), _checkSessionAndNavigate);
     }
   }
 
@@ -60,7 +68,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
   @override
   void dispose() {
     _timer?.cancel();
-    _pulseController.dispose();
+    _progressController.dispose();
     super.dispose();
   }
 
@@ -69,127 +77,133 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     return Scaffold(
       backgroundColor: AppColors.bgCanvas,
       body: SafeArea(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            // Top balance spacer
-            const SizedBox(height: 24),
-
-            // Center Brand Lockup (Stitch Consumer Entrance Spec)
-            Column(
-              mainAxisSize: MainAxisSize.min,
+        child: SizedBox(
+          width: double.infinity,
+          height: double.infinity,
+          child: FadeTransition(
+            opacity: _fadeAnimation,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                // App Crest Squircle: 92x92px, 28px rounded, #1A1C21, 2px border #FFB800
-                Container(
-                  width: 92,
-                  height: 92,
-                  decoration: BoxDecoration(
-                    color: AppColors.bgSurface1,
-                    borderRadius: BorderRadius.circular(28),
-                    border: Border.all(color: AppColors.primary, width: 2),
-                    boxShadow: const [
-                      BoxShadow(
-                        color: AppColors.primaryGlow,
-                        blurRadius: 24,
-                        offset: Offset(0, 8),
+                const SizedBox(height: 32),
+
+                // Center Brand Lockup
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Container(
+                        width: 92,
+                        height: 92,
+                        decoration: BoxDecoration(
+                          color: AppColors.bgSurface1,
+                          borderRadius: BorderRadius.circular(28),
+                          border: Border.all(color: AppColors.primary, width: 2),
+                          boxShadow: const [
+                            BoxShadow(
+                              color: AppColors.primaryGlow,
+                              blurRadius: 28,
+                              offset: Offset(0, 8),
+                            ),
+                          ],
+                        ),
+                        child: const Center(
+                          child: Icon(
+                            Icons.bolt_rounded,
+                            color: AppColors.primary,
+                            size: 48,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+
+                      Text(
+                        'Recall',
+                        textAlign: TextAlign.center,
+                        style: AppTypography.displayLarge.copyWith(
+                          fontSize: 38,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: -0.8,
+                          color: AppColors.textPrimary,
+                          height: 1.0,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+
+                      Text(
+                        'Study smarter, remember longer.',
+                        textAlign: TextAlign.center,
+                        style: AppTypography.bodyMedium.copyWith(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w500,
+                          color: AppColors.textSecondary,
+                        ),
                       ),
                     ],
                   ),
-                  child: const Center(
-                    child: Icon(
-                      Icons.bolt_rounded,
-                      color: AppColors.primary,
-                      size: 48,
-                    ),
-                  ),
                 ),
-                const SizedBox(height: 24),
 
-                // Wordmark: Recall (38px bold)
-                const Text(
-                  'Recall',
-                  style: TextStyle(
-                    fontFamily: 'Plus Jakarta Sans',
-                    fontSize: 38,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -0.5,
-                    color: AppColors.textPrimary,
-                    height: 1.0,
-                  ),
-                ),
-                const SizedBox(height: 10),
+                // Bottom Section: Loading Bar & Microcopy
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 28),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Container(
+                        width: 148,
+                        height: 5,
+                        decoration: BoxDecoration(
+                          color: AppColors.bgSurface1,
+                          borderRadius: BorderRadius.circular(999),
+                          border: Border.all(color: AppColors.borderSubtle, width: 1),
+                        ),
+                        child: AnimatedBuilder(
+                          animation: _progressAnimation,
+                          builder: (context, child) {
+                            return FractionallySizedBox(
+                              alignment: Alignment.centerLeft,
+                              widthFactor: _progressAnimation.value,
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary,
+                                  borderRadius: BorderRadius.circular(999),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: 14),
 
-                // Friendly Tagline
-                const Text(
-                  'Study smarter, remember longer ✨',
-                  style: TextStyle(
-                    fontFamily: 'Plus Jakarta Sans',
-                    fontSize: 15,
-                    fontWeight: FontWeight.w500,
-                    color: AppColors.textSecondary,
+                      Text(
+                        'Syncing your study workspace...',
+                        textAlign: TextAlign.center,
+                        style: AppTypography.bodySmall.copyWith(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+
+                      Container(
+                        width: 128,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: AppColors.borderSubtle,
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
-
-            // Bottom Section: Loading & Home Bar Indicator
-            Padding(
-              padding: const EdgeInsets.only(bottom: 24),
-              child: Column(
-                children: [
-                  // Loading Bar Container: 140px x 4px
-                  Container(
-                    width: 140,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: AppColors.bgSurface1,
-                      borderRadius: BorderRadius.circular(999),
-                      border: Border.all(color: AppColors.borderSubtle, width: 1),
-                    ),
-                    child: AnimatedBuilder(
-                      animation: _pulseAnimation,
-                      builder: (context, child) {
-                        return FractionallySizedBox(
-                          alignment: Alignment.centerLeft,
-                          widthFactor: _pulseAnimation.value,
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: AppColors.primary,
-                              borderRadius: BorderRadius.circular(999),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-
-                  // Microcopy
-                  const Text(
-                    'Getting your cards ready...',
-                    style: TextStyle(
-                      fontFamily: 'Plus Jakarta Sans',
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                      color: AppColors.textSecondary,
-                      letterSpacing: -0.2,
-                    ),
-                  ),
-                  const SizedBox(height: 28),
-
-                  // Home Bar Indicator
-                  Container(
-                    width: 128,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: AppColors.borderSubtle,
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );

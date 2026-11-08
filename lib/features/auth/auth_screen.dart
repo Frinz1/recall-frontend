@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../app.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/theme/app_colors.dart';
@@ -15,384 +17,248 @@ class AuthScreen extends StatefulWidget {
 
 class _AuthScreenState extends State<AuthScreen> {
   bool _isLogin = true;
-  final _nameController = TextEditingController();
-  final _emailController = TextEditingController(text: 'charles.biasora@gmail.com');
-  final _passwordController = TextEditingController(text: 'Aa@123456');
+  bool _isAwaitingOtp = false;
   bool _obscurePassword = true;
+
+  final _nameController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _otpController = TextEditingController();
+
+  String? _nameError;
+  String? _emailError;
+  String? _passwordError;
+  String? _otpError;
+  String? _devOtpPreview;
+
+  int _resendCooldown = 0;
+  Timer? _resendTimer;
+
+  static final RegExp _emailRegex = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
 
   @override
   void dispose() {
+    _resendTimer?.cancel();
     _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
+    _otpController.dispose();
     super.dispose();
   }
 
-  Future<void> _handleSubmit() async {
-    final email = _emailController.text.trim();
-    final password = _passwordController.text.trim();
+  void _startResendCooldown() {
+    _resendTimer?.cancel();
+    setState(() => _resendCooldown = 60);
+    _resendTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      if (_resendCooldown <= 1) {
+        timer.cancel();
+        setState(() => _resendCooldown = 0);
+      } else {
+        setState(() => _resendCooldown--);
+      }
+    });
+  }
 
-    if (email.isEmpty || password.isEmpty) {
-      ToastFeedback.showError(context, 'Please fill in all required fields.');
+  bool _validateInputs() {
+    final name = _nameController.text.trim();
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
+
+    String? nameErr;
+    String? emailErr;
+    String? passErr;
+
+    if (!_isLogin && name.length < 2) {
+      nameErr = 'Please enter your full name (at least 2 characters).';
+    }
+
+    if (email.isEmpty) {
+      emailErr = 'Email address is required.';
+    } else if (!_emailRegex.hasMatch(email)) {
+      emailErr = 'Please enter a valid email address (e.g. name@gmail.com).';
+    }
+
+    if (password.isEmpty) {
+      passErr = 'Password is required.';
+    } else if (!_isLogin) {
+      if (password.length < 8) {
+        passErr = 'Password must be at least 8 characters long.';
+      } else if (!RegExp(r'[A-Z]').hasMatch(password)) {
+        passErr = 'Password must include at least one uppercase letter.';
+      } else if (!RegExp(r'[0-9]').hasMatch(password)) {
+        passErr = 'Password must include at least one number.';
+      }
+    }
+
+    setState(() {
+      _nameError = nameErr;
+      _emailError = emailErr;
+      _passwordError = passErr;
+    });
+
+    return nameErr == null && emailErr == null && passErr == null;
+  }
+
+  Future<void> _handleSubmit() async {
+    FocusScope.of(context).unfocus();
+    if (!_validateInputs()) return;
+
+    final name = _nameController.text.trim();
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
+
+    if (_isLogin) {
+      final result = await AuthService.instance.loginWithDetails(
+        email: email,
+        password: password,
+      );
+      if (!mounted) return;
+
+      if (result.success) {
+        ToastFeedback.showSuccess(context, result.message);
+        _navigateOnAuthenticated();
+      } else {
+        setState(() => _passwordError = result.message);
+        ToastFeedback.showError(context, result.message);
+      }
+    } else {
+      final otpResult = await AuthService.instance.requestRegistrationOtp(
+        name: name,
+        email: email,
+        password: password,
+      );
+      if (!mounted) return;
+
+      if (otpResult.success) {
+        setState(() {
+          _isAwaitingOtp = true;
+          _otpError = null;
+          _otpController.clear();
+          _devOtpPreview = otpResult.otpPreview;
+        });
+        _startResendCooldown();
+        ToastFeedback.showInfo(context, otpResult.message);
+      } else {
+        ToastFeedback.showError(context, otpResult.message);
+      }
+    }
+  }
+
+  Future<void> _handleVerifyOtp() async {
+    FocusScope.of(context).unfocus();
+    final otp = _otpController.text.trim();
+    if (!RegExp(r'^\d{6}$').hasMatch(otp)) {
+      setState(() => _otpError = 'Please enter the 6-digit verification code.');
       return;
     }
 
-    bool success;
-    if (_isLogin) {
-      success = await AuthService.instance.login(email: email, password: password);
-    } else {
-      final name = _nameController.text.trim();
-      if (name.isEmpty) {
-        ToastFeedback.showError(context, 'Please enter your name.');
-        return;
-      }
-      success = await AuthService.instance.register(name: name, email: email, password: password);
-    }
+    setState(() => _otpError = null);
+    final result = await AuthService.instance.verifyRegistrationOtp(
+      email: _emailController.text.trim(),
+      otp: otp,
+    );
+    if (!mounted) return;
 
-    if (success && mounted) {
-      ToastFeedback.showSuccess(context, _isLogin ? 'Welcome back!' : 'Account created!');
-      if (widget.onSuccess != null) {
-        widget.onSuccess!();
-      } else {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute<void>(builder: (_) => const MainNavigationShell()),
-        );
-      }
-    } else if (mounted) {
-      ToastFeedback.showError(context, 'Authentication failed. Please verify credentials.');
+    if (result.success) {
+      ToastFeedback.showSuccess(context, result.message);
+      _navigateOnAuthenticated();
+    } else {
+      setState(() => _otpError = result.message);
+      ToastFeedback.showError(context, result.message);
+    }
+  }
+
+  Future<void> _handleResendOtp() async {
+    if (_resendCooldown > 0 || AuthService.instance.isLoading) return;
+
+    final otpResult = await AuthService.instance.requestRegistrationOtp(
+      name: _nameController.text.trim(),
+      email: _emailController.text.trim(),
+      password: _passwordController.text,
+    );
+    if (!mounted) return;
+
+    if (otpResult.success) {
+      setState(() {
+        _devOtpPreview = otpResult.otpPreview;
+        _otpError = null;
+      });
+      _startResendCooldown();
+      ToastFeedback.showInfo(context, 'New 6-digit verification code sent!');
+    } else {
+      ToastFeedback.showError(context, otpResult.message);
     }
   }
 
   Future<void> _handleGoogleSignIn() async {
-    ToastFeedback.showInfo(context, 'Connecting with Google Fast Login...');
-    final success = await AuthService.instance.login(
-      email: 'charles.biasora@gmail.com',
-      password: 'Aa@123456',
-    );
+    FocusScope.of(context).unfocus();
+    final result = await AuthService.instance.signInWithGoogle();
+    if (!mounted) return;
 
-    if (success && mounted) {
-      ToastFeedback.showSuccess(context, 'Signed in with Google!');
-      if (widget.onSuccess != null) {
-        widget.onSuccess!();
-      } else {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute<void>(builder: (_) => const MainNavigationShell()),
-        );
-      }
-    } else if (mounted) {
-      // Fallback demo student if needed
-      final demoSuccess = await AuthService.instance.login(
-        email: 'alex@recall.app',
-        password: 'password123',
-      );
-      if (demoSuccess && mounted) {
-        if (widget.onSuccess != null) {
-          widget.onSuccess!();
-        } else {
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute<void>(builder: (_) => const MainNavigationShell()),
-          );
-        }
-      }
+    if (result.success) {
+      ToastFeedback.showSuccess(context, result.message);
+      _navigateOnAuthenticated();
+    } else if (result.requiresAccountPickerFallback) {
+      _showGoogleAccountPickerSheet();
+    } else if (result.message != 'Google Sign-In was cancelled.') {
+      ToastFeedback.showError(context, result.message);
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.bgCanvas,
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 400),
+  Future<void> _showGoogleAccountPickerSheet() async {
+    final customEmailCtrl = TextEditingController();
+    final customNameCtrl = TextEditingController();
+    bool showCustomInput = false;
+    String? sheetError;
+
+    final presetAccounts = [
+      {'name': 'Charles Biasora', 'email': 'charles.biasora@gmail.com'},
+      {'name': 'Alex Rivera', 'email': 'alex@recall.app'},
+    ];
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.bgSurface1,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetCtx) {
+        return StatefulBuilder(
+          builder: (ctx, setSheetState) {
+            Future<void> selectGoogleAccount(String email, String name) async {
+              Navigator.of(sheetCtx).pop();
+              final res = await AuthService.instance.signInWithGoogle(
+                selectedEmail: email,
+                selectedName: name,
+              );
+              if (!mounted) return;
+              if (res.success) {
+                ToastFeedback.showSuccess(context, res.message);
+                _navigateOnAuthenticated();
+              } else {
+                ToastFeedback.showError(context, res.message);
+              }
+            }
+
+            return Padding(
+              padding: EdgeInsets.only(
+                left: 24,
+                right: 24,
+                top: 20,
+                bottom: MediaQuery.of(ctx).viewInsets.bottom + 28,
+              ),
               child: Column(
+                mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Top Brand Masthead (Stitch Spec)
-                  Row(
-                    children: [
-                      Container(
-                        width: 34,
-                        height: 34,
-                        decoration: BoxDecoration(
-                          color: AppColors.primary,
-                          borderRadius: BorderRadius.circular(10),
-                          boxShadow: [
-                            BoxShadow(
-                              color: AppColors.primaryGlow,
-                              blurRadius: 10,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: const Center(
-                          child: Icon(Icons.bolt_rounded, color: AppColors.bgCanvas, size: 22),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      const Text(
-                        'Recall',
-                        style: TextStyle(
-                          fontFamily: 'Plus Jakarta Sans',
-                          fontSize: 20,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: -0.5,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-
-                  // Segmented Full-Pill Switcher: [ Sign In ] [ Create Account ]
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(5),
-                    decoration: BoxDecoration(
-                      color: AppColors.bgSurface1,
-                      borderRadius: BorderRadius.circular(999),
-                      border: Border.all(color: AppColors.borderSubtle),
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: GestureDetector(
-                            onTap: () => setState(() => _isLogin = true),
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 150),
-                              padding: const EdgeInsets.symmetric(vertical: 10),
-                              decoration: BoxDecoration(
-                                color: _isLogin ? AppColors.primary : Colors.transparent,
-                                borderRadius: BorderRadius.circular(999),
-                              ),
-                              child: Text(
-                                'Sign In',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  fontFamily: 'Plus Jakarta Sans',
-                                  fontSize: 14,
-                                  fontWeight: _isLogin ? FontWeight.w700 : FontWeight.w500,
-                                  color: _isLogin ? AppColors.bgCanvas : AppColors.textSecondary,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                        Expanded(
-                          child: GestureDetector(
-                            onTap: () => setState(() => _isLogin = false),
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 150),
-                              padding: const EdgeInsets.symmetric(vertical: 10),
-                              decoration: BoxDecoration(
-                                color: !_isLogin ? AppColors.primary : Colors.transparent,
-                                borderRadius: BorderRadius.circular(999),
-                              ),
-                              child: Text(
-                                'Create Account',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  fontFamily: 'Plus Jakarta Sans',
-                                  fontSize: 14,
-                                  fontWeight: !_isLogin ? FontWeight.w700 : FontWeight.w500,
-                                  color: !_isLogin ? AppColors.bgCanvas : AppColors.textSecondary,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-
-                  // Greeting & Heading
-                  Text(
-                    _isLogin ? 'Welcome back 👋' : 'Create account 🚀',
-                    style: const TextStyle(
-                      fontFamily: 'Plus Jakarta Sans',
-                      fontSize: 26,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: -0.5,
-                      color: AppColors.textPrimary,
-                      height: 1.2,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    _isLogin
-                        ? "Ready to conquer today's study goals?"
-                        : 'Start building long-term memory today.',
-                    style: const TextStyle(
-                      fontFamily: 'Plus Jakarta Sans',
-                      fontSize: 14,
-                      fontWeight: FontWeight.w400,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-
-                  // Continue with Google Button
-                  InkWell(
-                    onTap: _handleGoogleSignIn,
-                    borderRadius: BorderRadius.circular(16),
-                    child: Container(
-                      width: double.infinity,
-                      height: 52,
-                      decoration: BoxDecoration(
-                        color: AppColors.bgSurface1,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: AppColors.borderSubtle),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          _buildGoogleLogo(),
-                          const SizedBox(width: 10),
-                          const Text(
-                            'Continue with Google',
-                            style: TextStyle(
-                              fontFamily: 'Plus Jakarta Sans',
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.textPrimary,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 18),
-
-                  // Divider: OR WITH EMAIL
-                  Row(
-                    children: [
-                      const Expanded(child: Divider(color: AppColors.borderSubtle, thickness: 1)),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        child: Text(
-                          'OR WITH EMAIL',
-                          style: TextStyle(
-                            fontFamily: 'Plus Jakarta Sans',
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            letterSpacing: 1.2,
-                            color: AppColors.textSecondary.withOpacity(0.7),
-                          ),
-                        ),
-                      ),
-                      const Expanded(child: Divider(color: AppColors.borderSubtle, thickness: 1)),
-                    ],
-                  ),
-                  const SizedBox(height: 18),
-
-                  // Form Fields
-                  if (!_isLogin) ...[
-                    _buildInputLabel('YOUR NAME'),
-                    _buildInputField(
-                      controller: _nameController,
-                      icon: Icons.person_outline_rounded,
-                      hintText: 'Enter your name',
-                      keyboardType: TextInputType.name,
-                    ),
-                    const SizedBox(height: 16),
-                  ],
-
-                  _buildInputLabel('YOUR EMAIL'),
-                  _buildInputField(
-                    controller: _emailController,
-                    icon: Icons.mail_outline_rounded,
-                    hintText: 'alex.rivera@university.edu',
-                    keyboardType: TextInputType.emailAddress,
-                  ),
-                  const SizedBox(height: 16),
-
-                  _buildInputLabel('PASSWORD'),
-                  _buildInputField(
-                    controller: _passwordController,
-                    icon: Icons.lock_outline_rounded,
-                    hintText: 'Enter password',
-                    isPassword: true,
-                    isFocusedBorder: true,
-                  ),
-
-                  // Forgot Password Link (Sign In only)
-                  if (_isLogin) ...[
-                    const SizedBox(height: 8),
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: TextButton(
-                        onPressed: () {
-                          ToastFeedback.showInfo(context, 'Password reset link available in Phase 2.');
-                        },
-                        style: TextButton.styleFrom(
-                          padding: EdgeInsets.zero,
-                          minimumSize: const Size(50, 24),
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        ),
-                        child: const Text(
-                          'Forgot password?',
-                          style: TextStyle(
-                            fontFamily: 'Plus Jakarta Sans',
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.primary,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                  const SizedBox(height: 20),
-
-                  // Primary CTA Button: [ Sign In to Recall → ]
-                  SizedBox(
-                    width: double.infinity,
-                    height: 54,
-                    child: ElevatedButton(
-                      onPressed: AuthService.instance.isLoading ? null : _handleSubmit,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: AppColors.bgCanvas,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                      ),
-                      child: AuthService.instance.isLoading
-                          ? const SizedBox(
-                              width: 22,
-                              height: 22,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2.5,
-                                valueColor: AlwaysStoppedAnimation<Color>(AppColors.bgCanvas),
-                              ),
-                            )
-                          : Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text(
-                                  _isLogin ? 'Sign In to Recall' : 'Create Account',
-                                  style: const TextStyle(
-                                    fontFamily: 'Plus Jakarta Sans',
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                const Icon(Icons.arrow_forward_rounded, size: 18),
-                              ],
-                            ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 36),
-
-                  // Home Indicator Bar
                   Center(
                     child: Container(
-                      width: 128,
+                      width: 40,
                       height: 4,
                       decoration: BoxDecoration(
                         color: AppColors.borderSubtle,
@@ -400,12 +266,790 @@ class _AuthScreenState extends State<AuthScreen> {
                       ),
                     ),
                   ),
+                  const SizedBox(height: 20),
+                  Row(
+                    children: [
+                      _buildGoogleLogo(),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Sign in with Google',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                            SizedBox(height: 2),
+                            Text(
+                              'Choose an account to continue to Recall',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 18),
+                  const Divider(color: AppColors.borderSubtle, height: 1),
+                  const SizedBox(height: 12),
+                  if (!showCustomInput) ...[
+                    ...presetAccounts.map((acc) {
+                      final email = acc['email']!;
+                      final name = acc['name']!;
+                      return InkWell(
+                        onTap: () => selectGoogleAccount(email, name),
+                        borderRadius: BorderRadius.circular(14),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+                          child: Row(
+                            children: [
+                              CircleAvatar(
+                                radius: 20,
+                                backgroundColor: AppColors.primary.withValues(alpha: 0.18),
+                                child: Text(
+                                  name[0].toUpperCase(),
+                                  style: const TextStyle(
+                                    color: AppColors.primary,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 14),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      name,
+                                      style: const TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w600,
+                                        color: AppColors.textPrimary,
+                                      ),
+                                    ),
+                                    Text(
+                                      email,
+                                      style: const TextStyle(
+                                        fontSize: 13,
+                                        color: AppColors.textSecondary,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const Icon(
+                                Icons.chevron_right_rounded,
+                                color: AppColors.textSecondary,
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }),
+                    InkWell(
+                      onTap: () => setSheetState(() => showCustomInput = true),
+                      borderRadius: BorderRadius.circular(14),
+                      child: const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                        child: Row(
+                          children: [
+                            CircleAvatar(
+                              radius: 20,
+                              backgroundColor: AppColors.bgSurface2,
+                              child: Icon(
+                                Icons.person_add_alt_1_rounded,
+                                color: AppColors.textPrimary,
+                                size: 20,
+                              ),
+                            ),
+                            SizedBox(width: 14),
+                            Text(
+                              'Use another Google account',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ] else ...[
+                    const SizedBox(height: 6),
+                    TextField(
+                      controller: customNameCtrl,
+                      style: const TextStyle(color: AppColors.textPrimary),
+                      decoration: InputDecoration(
+                        labelText: 'Your Name',
+                        hintText: 'e.g. Juan Dela Cruz',
+                        filled: true,
+                        fillColor: AppColors.bgCanvas,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: customEmailCtrl,
+                      keyboardType: TextInputType.emailAddress,
+                      style: const TextStyle(color: AppColors.textPrimary),
+                      decoration: InputDecoration(
+                        labelText: 'Google Email (@gmail.com)',
+                        hintText: 'yourname@gmail.com',
+                        errorText: sheetError,
+                        filled: true,
+                        fillColor: AppColors.bgCanvas,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 48,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: AppColors.bgCanvas,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        onPressed: () {
+                          final email = customEmailCtrl.text.trim();
+                          final name = customNameCtrl.text.trim();
+                          if (!_emailRegex.hasMatch(email)) {
+                            setSheetState(() => sheetError = 'Please enter a valid Google email.');
+                            return;
+                          }
+                          selectGoogleAccount(
+                            email,
+                            name.isNotEmpty ? name : email.split('@').first,
+                          );
+                        },
+                        child: const Text(
+                          'Continue with Google Account',
+                          style: TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _navigateOnAuthenticated() {
+    if (widget.onSuccess != null) {
+      widget.onSuccess!();
+    } else if (mounted) {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute<void>(builder: (_) => const MainNavigationShell()),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: AuthService.instance,
+      builder: (context, _) {
+        final isLoading = AuthService.instance.isLoading;
+
+        return Scaffold(
+          backgroundColor: AppColors.bgCanvas,
+          body: SafeArea(
+            child: Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 400),
+                  child: _isAwaitingOtp
+                      ? _buildOtpVerificationStep(isLoading)
+                      : _buildMainAuthForm(isLoading),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildOtpVerificationStep(bool isLoading) {
+    final targetEmail = _emailController.text.trim();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Back Button
+        InkWell(
+          onTap: isLoading
+              ? null
+              : () => setState(() {
+                    _isAwaitingOtp = false;
+                    _otpError = null;
+                  }),
+          borderRadius: BorderRadius.circular(10),
+          child: const Padding(
+            padding: EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.arrow_back_rounded, size: 18, color: AppColors.textSecondary),
+                SizedBox(width: 6),
+                Text(
+                  'Back to account details',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 20),
+
+        Container(
+          width: 56,
+          height: 56,
+          decoration: BoxDecoration(
+            color: AppColors.primary.withValues(alpha: 0.14),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.primary.withValues(alpha: 0.5)),
+          ),
+          child: const Center(
+            child: Icon(Icons.mark_email_read_rounded, color: AppColors.primary, size: 28),
+          ),
+        ),
+        const SizedBox(height: 20),
+
+        const Text(
+          'Verify your email',
+          style: TextStyle(
+            fontSize: 26,
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.5,
+            color: AppColors.textPrimary,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Enter the 6-digit verification code sent to $targetEmail to activate your Recall account.',
+          style: const TextStyle(
+            fontSize: 14,
+            height: 1.5,
+            color: AppColors.textSecondary,
+          ),
+        ),
+        const SizedBox(height: 20),
+
+        // Helpful Dev OTP Banner if SMTP is not yet configured in .env
+        if (_devOtpPreview != null) ...[
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: AppColors.bgSurface1,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AppColors.primary.withValues(alpha: 0.5)),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.key_rounded, color: AppColors.primary, size: 20),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'INSTANT OTP CODE (DEV PREVIEW)',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.8,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        _devOtpPreview!,
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 4,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                TextButton(
+                  onPressed: () {
+                    setState(() {
+                      _otpController.text = _devOtpPreview!;
+                      _otpError = null;
+                    });
+                  },
+                  child: const Text(
+                    'Auto-Fill',
+                    style: TextStyle(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
+        ],
+
+        _buildInputLabel('6-DIGIT VERIFICATION CODE'),
+        Container(
+          height: 58,
+          decoration: BoxDecoration(
+            color: AppColors.bgSurface1,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: _otpError != null ? AppColors.danger : AppColors.primary,
+              width: 1.5,
+            ),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          alignment: Alignment.center,
+          child: TextField(
+            controller: _otpController,
+            keyboardType: TextInputType.number,
+            textAlign: TextAlign.center,
+            maxLength: 6,
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            onChanged: (_) {
+              if (_otpError != null) setState(() => _otpError = null);
+            },
+            style: const TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 10,
+              color: AppColors.textPrimary,
+            ),
+            decoration: const InputDecoration(
+              counterText: '',
+              hintText: '000000',
+              hintStyle: TextStyle(
+                fontSize: 22,
+                letterSpacing: 10,
+                color: AppColors.textMuted,
+              ),
+              border: InputBorder.none,
+            ),
+          ),
+        ),
+        if (_otpError != null) ...[
+          const SizedBox(height: 6),
+          Text(
+            _otpError!,
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+              color: AppColors.danger,
+            ),
+          ),
+        ],
+        const SizedBox(height: 24),
+
+        SizedBox(
+          width: double.infinity,
+          height: 54,
+          child: ElevatedButton(
+            onPressed: isLoading ? null : _handleVerifyOtp,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: AppColors.bgCanvas,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(999),
+              ),
+            ),
+            child: isLoading
+                ? const SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.5,
+                      valueColor: AlwaysStoppedAnimation<Color>(AppColors.bgCanvas),
+                    ),
+                  )
+                : const Text(
+                    'Verify & Activate Account',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        Center(
+          child: TextButton(
+            onPressed: (_resendCooldown > 0 || isLoading) ? null : _handleResendOtp,
+            child: Text(
+              _resendCooldown > 0
+                  ? 'Resend code in ${_resendCooldown}s'
+                  : 'Didn\'t receive the code? Resend',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: _resendCooldown > 0 ? AppColors.textMuted : AppColors.primary,
               ),
             ),
           ),
         ),
-      ),
+      ],
+    );
+  }
+
+  Widget _buildMainAuthForm(bool isLoading) {
+    final passwordText = _passwordController.text;
+    final hasMinLength = passwordText.length >= 8;
+    final hasUppercase = RegExp(r'[A-Z]').hasMatch(passwordText);
+    final hasNumber = RegExp(r'[0-9]').hasMatch(passwordText);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Top Brand Masthead
+        Row(
+          children: [
+            Container(
+              width: 34,
+              height: 34,
+              decoration: BoxDecoration(
+                color: AppColors.primary,
+                borderRadius: BorderRadius.circular(10),
+                boxShadow: const [
+                  BoxShadow(
+                    color: AppColors.primaryGlow,
+                    blurRadius: 10,
+                    offset: Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: const Center(
+                child: Icon(Icons.bolt_rounded, color: AppColors.bgCanvas, size: 22),
+              ),
+            ),
+            const SizedBox(width: 10),
+            const Text(
+              'Recall',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                letterSpacing: -0.5,
+                color: AppColors.textPrimary,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 24),
+
+        // Segmented Full-Pill Switcher: [ Sign In ] [ Create Account ]
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(5),
+          decoration: BoxDecoration(
+            color: AppColors.bgSurface1,
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(color: AppColors.borderSubtle),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: GestureDetector(
+                  onTap: () => setState(() {
+                    _isLogin = true;
+                    _nameError = null;
+                    _emailError = null;
+                    _passwordError = null;
+                  }),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 150),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    decoration: BoxDecoration(
+                      color: _isLogin ? AppColors.primary : Colors.transparent,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      'Sign In',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: _isLogin ? FontWeight.w700 : FontWeight.w500,
+                        color: _isLogin ? AppColors.bgCanvas : AppColors.textSecondary,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              Expanded(
+                child: GestureDetector(
+                  onTap: () => setState(() {
+                    _isLogin = false;
+                    _nameError = null;
+                    _emailError = null;
+                    _passwordError = null;
+                  }),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 150),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    decoration: BoxDecoration(
+                      color: !_isLogin ? AppColors.primary : Colors.transparent,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      'Create Account',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: !_isLogin ? FontWeight.w700 : FontWeight.w500,
+                        color: !_isLogin ? AppColors.bgCanvas : AppColors.textSecondary,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 24),
+
+        // Greeting & Heading
+        Text(
+          _isLogin ? 'Welcome back' : 'Create your account',
+          style: const TextStyle(
+            fontSize: 26,
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.5,
+            color: AppColors.textPrimary,
+            height: 1.2,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          _isLogin
+              ? 'Sign in with your verified Recall credentials.'
+              : 'Verify your email with a 6-digit code to start studying.',
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w400,
+            color: AppColors.textSecondary,
+          ),
+        ),
+        const SizedBox(height: 24),
+
+        // Continue with Google Button
+        InkWell(
+          onTap: isLoading ? null : _handleGoogleSignIn,
+          borderRadius: BorderRadius.circular(16),
+          child: Container(
+            width: double.infinity,
+            height: 52,
+            decoration: BoxDecoration(
+              color: AppColors.bgSurface1,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppColors.borderSubtle),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _buildGoogleLogo(),
+                const SizedBox(width: 10),
+                const Text(
+                  'Continue with Google',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 18),
+
+        // Divider: OR WITH EMAIL
+        Row(
+          children: [
+            const Expanded(child: Divider(color: AppColors.borderSubtle, thickness: 1)),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Text(
+                'OR WITH EMAIL',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 1.2,
+                  color: AppColors.textSecondary.withValues(alpha: 0.7),
+                ),
+              ),
+            ),
+            const Expanded(child: Divider(color: AppColors.borderSubtle, thickness: 1)),
+          ],
+        ),
+        const SizedBox(height: 18),
+
+        // Form Fields
+        if (!_isLogin) ...[
+          _buildInputLabel('YOUR NAME'),
+          _buildInputField(
+            controller: _nameController,
+            icon: Icons.person_outline_rounded,
+            hintText: 'Enter your full name',
+            keyboardType: TextInputType.name,
+            errorText: _nameError,
+            onChanged: (_) {
+              if (_nameError != null) setState(() => _nameError = null);
+            },
+          ),
+          const SizedBox(height: 16),
+        ],
+
+        _buildInputLabel('YOUR EMAIL'),
+        _buildInputField(
+          controller: _emailController,
+          icon: Icons.mail_outline_rounded,
+          hintText: 'you@gmail.com',
+          keyboardType: TextInputType.emailAddress,
+          errorText: _emailError,
+          onChanged: (_) {
+            if (_emailError != null) setState(() => _emailError = null);
+          },
+        ),
+        const SizedBox(height: 16),
+
+        _buildInputLabel('PASSWORD'),
+        _buildInputField(
+          controller: _passwordController,
+          icon: Icons.lock_outline_rounded,
+          hintText: _isLogin ? 'Enter your password' : 'Create a strong password',
+          isPassword: true,
+          errorText: _passwordError,
+          onChanged: (_) {
+            setState(() {
+              if (_passwordError != null) _passwordError = null;
+            });
+          },
+        ),
+
+        // Password Strength Checklist on Create Account
+        if (!_isLogin) ...[
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 12,
+            runSpacing: 6,
+            children: [
+              _buildPasswordRuleChip('8+ chars', hasMinLength),
+              _buildPasswordRuleChip('1 Uppercase', hasUppercase),
+              _buildPasswordRuleChip('1 Number', hasNumber),
+            ],
+          ),
+        ],
+
+        const SizedBox(height: 24),
+
+        // Primary CTA Button
+        SizedBox(
+          width: double.infinity,
+          height: 54,
+          child: ElevatedButton(
+            onPressed: isLoading ? null : _handleSubmit,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: AppColors.bgCanvas,
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(999),
+              ),
+            ),
+            child: isLoading
+                ? const SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.5,
+                      valueColor: AlwaysStoppedAnimation<Color>(AppColors.bgCanvas),
+                    ),
+                  )
+                : Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        _isLogin ? 'Sign In to Recall' : 'Send 6-Digit Verification Code',
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      const Icon(Icons.arrow_forward_rounded, size: 18),
+                    ],
+                  ),
+          ),
+        ),
+
+        const SizedBox(height: 36),
+
+        // Home Indicator Bar
+        Center(
+          child: Container(
+            width: 128,
+            height: 4,
+            decoration: BoxDecoration(
+              color: AppColors.borderSubtle,
+              borderRadius: BorderRadius.circular(999),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPasswordRuleChip(String label, bool isMet) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(
+          isMet ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
+          size: 14,
+          color: isMet ? AppColors.success : AppColors.textMuted,
+        ),
+        const SizedBox(width: 4),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+            color: isMet ? AppColors.success : AppColors.textMuted,
+          ),
+        ),
+      ],
     );
   }
 
@@ -415,7 +1059,6 @@ class _AuthScreenState extends State<AuthScreen> {
       child: Text(
         label,
         style: const TextStyle(
-          fontFamily: 'Plus Jakarta Sans',
           fontSize: 11,
           fontWeight: FontWeight.w700,
           letterSpacing: 1.0,
@@ -430,65 +1073,86 @@ class _AuthScreenState extends State<AuthScreen> {
     required IconData icon,
     required String hintText,
     bool isPassword = false,
-    bool isFocusedBorder = false,
+    String? errorText,
+    ValueChanged<String>? onChanged,
     TextInputType keyboardType = TextInputType.text,
   }) {
-    return Container(
-      height: 52,
-      decoration: BoxDecoration(
-        color: AppColors.bgSurface1,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: isFocusedBorder ? AppColors.primary : AppColors.borderSubtle,
-          width: isFocusedBorder ? 1.5 : 1.0,
-        ),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Row(
-        children: [
-          Icon(
-            icon,
-            size: 20,
-            color: isFocusedBorder ? AppColors.primary : AppColors.textSecondary,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: TextField(
-              controller: controller,
-              obscureText: isPassword && _obscurePassword,
-              keyboardType: keyboardType,
-              style: const TextStyle(
-                fontFamily: 'Plus Jakarta Sans',
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                color: AppColors.textPrimary,
-              ),
-              decoration: InputDecoration(
-                hintText: hintText,
-                hintStyle: TextStyle(
-                  fontFamily: 'Plus Jakarta Sans',
-                  fontSize: 14,
-                  fontWeight: FontWeight.w400,
-                  color: AppColors.textSecondary.withOpacity(0.6),
-                ),
-                border: InputBorder.none,
-                isDense: true,
-                contentPadding: EdgeInsets.zero,
-              ),
+    final hasError = errorText != null && errorText.isNotEmpty;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          height: 52,
+          decoration: BoxDecoration(
+            color: AppColors.bgSurface1,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: hasError ? AppColors.danger : AppColors.borderSubtle,
+              width: hasError ? 1.5 : 1.0,
             ),
           ),
-          if (isPassword)
-            IconButton(
-              icon: Icon(
-                _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Row(
+            children: [
+              Icon(
+                icon,
                 size: 20,
-                color: AppColors.textSecondary,
+                color: hasError ? AppColors.danger : AppColors.textSecondary,
               ),
-              splashRadius: 18,
-              onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+              const SizedBox(width: 12),
+              Expanded(
+                child: TextField(
+                  controller: controller,
+                  obscureText: isPassword && _obscurePassword,
+                  keyboardType: keyboardType,
+                  onChanged: onChanged,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.textPrimary,
+                  ),
+                  decoration: InputDecoration(
+                    hintText: hintText,
+                    hintStyle: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w400,
+                      color: AppColors.textSecondary.withValues(alpha: 0.6),
+                    ),
+                    border: InputBorder.none,
+                    isDense: true,
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                ),
+              ),
+              if (isPassword)
+                IconButton(
+                  icon: Icon(
+                    _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                    size: 20,
+                    color: AppColors.textSecondary,
+                  ),
+                  splashRadius: 18,
+                  onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                ),
+            ],
+          ),
+        ),
+        if (hasError) ...[
+          const SizedBox(height: 6),
+          Padding(
+            padding: const EdgeInsets.only(left: 4),
+            child: Text(
+              errorText,
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: AppColors.danger,
+              ),
             ),
+          ),
         ],
-      ),
+      ],
     );
   }
 
@@ -514,11 +1178,9 @@ class _GoogleLogoPainter extends CustomPainter {
     final paintYellow = Paint()..color = const Color(0xFFFBBC05);
     final paintRed = Paint()..color = const Color(0xFFEA4335);
 
-    // Draw Google G geometry
     final center = Offset(w / 2, h / 2);
     final radius = w / 2;
 
-    // Red (top)
     canvas.drawArc(
       Rect.fromCircle(center: center, radius: radius),
       -0.8,
@@ -527,7 +1189,6 @@ class _GoogleLogoPainter extends CustomPainter {
       paintRed,
     );
 
-    // Yellow (left)
     canvas.drawArc(
       Rect.fromCircle(center: center, radius: radius),
       0.8,
@@ -536,7 +1197,6 @@ class _GoogleLogoPainter extends CustomPainter {
       paintYellow,
     );
 
-    // Green (bottom)
     canvas.drawArc(
       Rect.fromCircle(center: center, radius: radius),
       2.3,
@@ -545,7 +1205,6 @@ class _GoogleLogoPainter extends CustomPainter {
       paintGreen,
     );
 
-    // Blue (right & horizontal bar)
     canvas.drawArc(
       Rect.fromCircle(center: center, radius: radius),
       3.9,
@@ -554,11 +1213,9 @@ class _GoogleLogoPainter extends CustomPainter {
       paintBlue,
     );
 
-    // Cutout center
     final innerPaint = Paint()..color = AppColors.bgSurface1;
     canvas.drawCircle(center, radius * 0.58, innerPaint);
 
-    // Horizontal blue bar
     final barRect = Rect.fromLTRB(w * 0.45, h * 0.38, w, h * 0.62);
     canvas.drawRect(barRect, paintBlue);
   }
