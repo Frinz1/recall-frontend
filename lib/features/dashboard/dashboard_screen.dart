@@ -138,38 +138,42 @@ class DashboardScreen extends StatelessWidget {
                   return Container(
                     margin: const EdgeInsets.only(bottom: 12),
                     decoration: BoxDecoration(
-                      color: AppColors.bgCard,
                       borderRadius: BorderRadius.circular(14),
                       border: Border.all(color: AppColors.borderSubtle),
                     ),
-                    child: ListTile(
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      leading: Container(
-                        width: 42,
-                        height: 42,
-                        decoration: BoxDecoration(
-                          color: Color(deck.colorValue).withOpacity(0.15),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: Color(deck.colorValue).withOpacity(0.5)),
-                        ),
-                        child: Icon(Icons.style_rounded, color: Color(deck.colorValue)),
-                      ),
-                      title: Text(deck.title, style: AppTypography.titleMedium.copyWith(fontSize: 15)),
-                      subtitle: Padding(
-                        padding: const EdgeInsets.only(top: 4),
-                        child: Text(
-                          '${deck.totalCards} cards • ${deck.dueCardsCount} due',
-                          style: AppTypography.bodySmall,
-                        ),
-                      ),
-                      trailing: const Icon(Icons.chevron_right_rounded, color: AppColors.textMuted),
-                      onTap: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => DeckDetailScreen(deckId: deck.id),
+                    child: Material(
+                      color: AppColors.bgCard,
+                      borderRadius: BorderRadius.circular(14),
+                      clipBehavior: Clip.antiAlias,
+                      child: ListTile(
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        leading: Container(
+                          width: 42,
+                          height: 42,
+                          decoration: BoxDecoration(
+                            color: Color(deck.colorValue).withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: Color(deck.colorValue).withOpacity(0.5)),
                           ),
-                        );
-                      },
+                          child: Icon(Icons.style_rounded, color: Color(deck.colorValue)),
+                        ),
+                        title: Text(deck.title, style: AppTypography.titleMedium.copyWith(fontSize: 15)),
+                        subtitle: Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Text(
+                            '${deck.totalCards} cards • ${deck.dueCardsCount} due',
+                            style: AppTypography.bodySmall,
+                          ),
+                        ),
+                        trailing: const Icon(Icons.chevron_right_rounded, color: AppColors.textMuted),
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => DeckDetailScreen(deckId: deck.id),
+                            ),
+                          );
+                        },
+                      ),
                     ),
                   );
                 }),

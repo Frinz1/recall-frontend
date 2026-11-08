@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../core/models/flashcard_model.dart';
 import '../../core/services/study_repository.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
@@ -47,34 +46,38 @@ class SubjectListScreen extends StatelessWidget {
                     return Container(
                       margin: const EdgeInsets.only(bottom: 12),
                       decoration: BoxDecoration(
-                        color: AppColors.bgCard,
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(color: AppColors.borderSubtle),
                       ),
-                      child: ListTile(
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                        leading: Container(
-                          width: 44,
-                          height: 44,
-                          decoration: BoxDecoration(
-                            color: Color(sub.colorValue).withOpacity(0.18),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: Color(sub.colorValue)),
-                          ),
-                          child: Center(
-                            child: Icon(
-                              Icons.folder_special_rounded,
-                              color: Color(sub.colorValue),
-                              size: 22,
+                      child: Material(
+                        color: AppColors.bgCard,
+                        borderRadius: BorderRadius.circular(16),
+                        clipBehavior: Clip.antiAlias,
+                        child: ListTile(
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                          leading: Container(
+                            width: 44,
+                            height: 44,
+                            decoration: BoxDecoration(
+                              color: Color(sub.colorValue).withOpacity(0.18),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Color(sub.colorValue)),
+                            ),
+                            child: Center(
+                              child: Icon(
+                                Icons.folder_special_rounded,
+                                color: Color(sub.colorValue),
+                                size: 22,
+                              ),
                             ),
                           ),
+                          title: Text(sub.name, style: AppTypography.titleMedium),
+                          subtitle: Text(
+                            '$deckCount flashcard decks',
+                            style: AppTypography.bodySmall,
+                          ),
+                          trailing: const Icon(Icons.chevron_right_rounded, color: AppColors.textMuted),
                         ),
-                        title: Text(sub.name, style: AppTypography.titleMedium),
-                        subtitle: Text(
-                          '$deckCount flashcard decks',
-                          style: AppTypography.bodySmall,
-                        ),
-                        trailing: const Icon(Icons.chevron_right_rounded, color: AppColors.textMuted),
                       ),
                     );
                   },

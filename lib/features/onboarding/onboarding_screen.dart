@@ -80,8 +80,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   void _navigateToAuth() {
     if (widget.onComplete != null) {
       widget.onComplete!();
-    }
-    if (mounted) {
+    } else if (mounted) {
       Navigator.of(context).pushReplacement(
         MaterialPageRoute<void>(builder: (_) => const AuthScreen()),
       );

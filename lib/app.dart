@@ -65,6 +65,48 @@ class _RecallAppState extends State<RecallApp> {
       title: 'Recall - Smart Flashcards & Learning Companion',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.darkTheme,
+      builder: (context, child) {
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            if (constraints.maxWidth <= 520) {
+              return child ?? const SizedBox.shrink();
+            }
+
+            const clampedWidth = 480.0;
+            final mediaQuery = MediaQuery.of(context);
+            return Container(
+              color: const Color(0xFF090A0D),
+              alignment: Alignment.center,
+              child: Container(
+                width: clampedWidth,
+                decoration: BoxDecoration(
+                  border: Border.symmetric(
+                    vertical: BorderSide(
+                      color: AppColors.borderSubtle.withOpacity(0.6),
+                      width: 1,
+                    ),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.5),
+                      blurRadius: 32,
+                      spreadRadius: 4,
+                    ),
+                  ],
+                ),
+                child: ClipRect(
+                  child: MediaQuery(
+                    data: mediaQuery.copyWith(
+                      size: Size(clampedWidth, mediaQuery.size.height),
+                    ),
+                    child: child ?? const SizedBox.shrink(),
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
       home: _buildCurrentScreen(),
     );
   }
