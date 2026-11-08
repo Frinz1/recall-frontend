@@ -428,6 +428,12 @@ class StudyRepository extends ChangeNotifier {
         } else {
           _subjects.insert(0, created);
         }
+        // Safeguard: Remap any decks assigned to optimistic tempId to the synced subject ID
+        for (int i = 0; i < _decks.length; i++) {
+          if (_decks[i].subjectId == tempId) {
+            _decks[i] = _decks[i].copyWith(subjectId: created.id);
+          }
+        }
         await _saveToCache();
         notifyListeners();
         return created;
@@ -626,7 +632,10 @@ class StudyRepository extends ChangeNotifier {
         final created = Deck.fromJson(Map<String, dynamic>.from(res.data as Map));
         final idx = _decks.indexWhere((d) => d.id == tempId);
         if (idx != -1) {
-          _decks[idx] = created;
+          final existingCards = _decks[idx].cards;
+          _decks[idx] = created.copyWith(
+            cards: existingCards.isNotEmpty ? existingCards : created.cards,
+          );
         }
         // If backend also auto-created a default subject when none existed, sync subjects
         if (_subjects.isEmpty) {
