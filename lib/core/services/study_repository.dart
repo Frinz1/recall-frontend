@@ -6,22 +6,18 @@ import '../models/flashcard_model.dart';
 import '../network/api_client.dart';
 
 /// Central state and cloud-synced data repository for Recall.
-/// Implements SM-2 execution, weak-card detection, local JSON caching, and cloud API synchronization.
+/// Implements SM-2 execution, weak-card detection, per-user local caching, and cloud API synchronization.
+/// Starts with 0 subjects, 0 decks, 0 cards for fresh accounts.
 class StudyRepository extends ChangeNotifier {
   static final StudyRepository instance = StudyRepository._internal();
-  StudyRepository._internal() {
-    _initializeSeedData();
-  }
+  StudyRepository._internal();
 
-  static const String _cacheSubjectsKey = 'recall_cached_subjects_v1';
-  static const String _cacheDecksKey = 'recall_cached_decks_v1';
-  static const String _cacheRetentionKey = 'recall_cached_retention_v1';
-
+  String? _activeUserId;
   final List<Subject> _subjects = [];
   final List<Deck> _decks = [];
   final List<ReviewLog> _reviewLogs = [];
-  final int _studyStreakDays = 5;
-  double? _cloudRetentionRate;
+  int _studyStreakDays = 0;
+  double _cloudRetentionRate = 0.0;
   bool _isSyncing = false;
 
   List<Subject> get subjects => List.unmodifiable(_subjects);
@@ -30,44 +26,64 @@ class StudyRepository extends ChangeNotifier {
   int get studyStreakDays => _studyStreakDays;
   bool get isSyncing => _isSyncing;
 
+  String get _subjectsCacheKey => 'recall_subjects_v2_${_activeUserId ?? "guest"}';
+  String get _decksCacheKey => 'recall_decks_v2_${_activeUserId ?? "guest"}';
+  String get _retentionCacheKey => 'recall_retention_v2_${_activeUserId ?? "guest"}';
+  String get _streakCacheKey => 'recall_streak_v2_${_activeUserId ?? "guest"}';
+
+  void setActiveUser(String? userId) {
+    if (_activeUserId != userId) {
+      _activeUserId = userId;
+      _subjects.clear();
+      _decks.clear();
+      _reviewLogs.clear();
+      _studyStreakDays = 0;
+      _cloudRetentionRate = 0.0;
+      notifyListeners();
+    }
+  }
+
   // -------------------------------------------------------------
-  // Local Disk Cache (SharedPreferences) & Cloud Synchronization
+  // Per-User Local Disk Cache (SharedPreferences) & Cloud Sync
   // -------------------------------------------------------------
 
-  Future<void> loadFromCache() async {
+  Future<void> loadFromCache({String? userId}) async {
+    if (userId != null) {
+      setActiveUser(userId);
+    }
+    if (_activeUserId == null) return;
+
     try {
       final prefs = await SharedPreferences.getInstance();
-      final subjectsJson = prefs.getString(_cacheSubjectsKey);
-      final decksJson = prefs.getString(_cacheDecksKey);
-      final cachedRetention = prefs.getDouble(_cacheRetentionKey);
+      final subjectsJson = prefs.getString(_subjectsCacheKey);
+      final decksJson = prefs.getString(_decksCacheKey);
+      final cachedRetention = prefs.getDouble(_retentionCacheKey);
+      final cachedStreak = prefs.getInt(_streakCacheKey);
 
-      if (cachedRetention != null) {
-        _cloudRetentionRate = cachedRetention;
-      }
+      _cloudRetentionRate = cachedRetention ?? 0.0;
+      _studyStreakDays = cachedStreak ?? 0;
 
+      _subjects.clear();
       if (subjectsJson != null && subjectsJson.isNotEmpty) {
         final decoded = jsonDecode(subjectsJson);
-        if (decoded is List && decoded.isNotEmpty) {
-          _subjects
-            ..clear()
-            ..addAll(
-              decoded
-                  .whereType<Map>()
-                  .map((s) => Subject.fromJson(Map<String, dynamic>.from(s))),
-            );
+        if (decoded is List) {
+          _subjects.addAll(
+            decoded
+                .whereType<Map>()
+                .map((s) => Subject.fromJson(Map<String, dynamic>.from(s))),
+          );
         }
       }
 
+      _decks.clear();
       if (decksJson != null && decksJson.isNotEmpty) {
         final decoded = jsonDecode(decksJson);
-        if (decoded is List && decoded.isNotEmpty) {
-          _decks
-            ..clear()
-            ..addAll(
-              decoded
-                  .whereType<Map>()
-                  .map((d) => Deck.fromJson(Map<String, dynamic>.from(d))),
-            );
+        if (decoded is List) {
+          _decks.addAll(
+            decoded
+                .whereType<Map>()
+                .map((d) => Deck.fromJson(Map<String, dynamic>.from(d))),
+          );
         }
       }
 
@@ -76,30 +92,39 @@ class StudyRepository extends ChangeNotifier {
   }
 
   Future<void> _saveToCache() async {
+    if (_activeUserId == null) return;
     try {
       final prefs = await SharedPreferences.getInstance();
       final subjectsJson = jsonEncode(_subjects.map((s) => s.toJson()).toList());
       final decksJson = jsonEncode(_decks.map((d) => d.toJson()).toList());
-      await prefs.setString(_cacheSubjectsKey, subjectsJson);
-      await prefs.setString(_cacheDecksKey, decksJson);
-      if (_cloudRetentionRate != null) {
-        await prefs.setDouble(_cacheRetentionKey, _cloudRetentionRate!);
-      }
+      await prefs.setString(_subjectsCacheKey, subjectsJson);
+      await prefs.setString(_decksCacheKey, decksJson);
+      await prefs.setDouble(_retentionCacheKey, _cloudRetentionRate);
+      await prefs.setInt(_streakCacheKey, _studyStreakDays);
     } catch (_) {}
   }
 
   Future<void> clearLocalState() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.remove(_cacheSubjectsKey);
-      await prefs.remove(_cacheDecksKey);
-      await prefs.remove(_cacheRetentionKey);
+      if (_activeUserId != null) {
+        await prefs.remove(_subjectsCacheKey);
+        await prefs.remove(_decksCacheKey);
+        await prefs.remove(_retentionCacheKey);
+        await prefs.remove(_streakCacheKey);
+      }
+      // Also remove legacy global cache keys so old data never resurfaces
+      await prefs.remove('recall_cached_subjects_v1');
+      await prefs.remove('recall_cached_decks_v1');
+      await prefs.remove('recall_cached_retention_v1');
     } catch (_) {}
+
+    _activeUserId = null;
     _subjects.clear();
     _decks.clear();
     _reviewLogs.clear();
-    _cloudRetentionRate = null;
-    _initializeSeedData();
+    _studyStreakDays = 0;
+    _cloudRetentionRate = 0.0;
     notifyListeners();
   }
 
@@ -125,11 +150,9 @@ class StudyRepository extends ChangeNotifier {
             .whereType<Map>()
             .map((s) => Subject.fromJson(Map<String, dynamic>.from(s)))
             .toList();
-        if (remoteSubjects.isNotEmpty) {
-          _subjects
-            ..clear()
-            ..addAll(remoteSubjects);
-        }
+        _subjects
+          ..clear()
+          ..addAll(remoteSubjects);
       }
 
       if (decksRes.success && decksRes.data is List) {
@@ -138,8 +161,6 @@ class StudyRepository extends ChangeNotifier {
 
         for (final rawDeck in rawList) {
           final deckMap = Map<String, dynamic>.from(rawDeck);
-          // If the deck list response already contains full card objects, parse directly;
-          // otherwise fetch full deck detail via GET /decks/:id
           final cardsField = deckMap['cards'];
           final hasFullCards = cardsField is List &&
               (cardsField.isEmpty ||
@@ -160,23 +181,29 @@ class StudyRepository extends ChangeNotifier {
           }
         }
 
-        if (loadedDecks.isNotEmpty) {
-          _decks
-            ..clear()
-            ..addAll(loadedDecks);
-        }
+        _decks
+          ..clear()
+          ..addAll(loadedDecks);
       }
 
       if (analyticsRes.success && analyticsRes.data is Map) {
         final metrics = (analyticsRes.data as Map)['metrics'];
-        if (metrics is Map && metrics['retentionRate'] is num) {
-          _cloudRetentionRate = (metrics['retentionRate'] as num).toDouble();
+        if (metrics is Map) {
+          if (metrics['retentionRate'] is num) {
+            _cloudRetentionRate = (metrics['retentionRate'] as num).toDouble();
+          }
+          if (metrics['streakDays'] is num) {
+            _studyStreakDays = (metrics['streakDays'] as num).toInt();
+          }
         }
+      } else if (_decks.isEmpty) {
+        _cloudRetentionRate = 0.0;
+        _studyStreakDays = 0;
       }
 
       await _saveToCache();
     } catch (_) {
-      // Retain cached/existing state on transient network glitch
+      // Keep current user's cached state on transient network glitch
     } finally {
       _isSyncing = false;
       notifyListeners();
@@ -201,7 +228,10 @@ class StudyRepository extends ChangeNotifier {
           .length;
       return (successfulReviews / _reviewLogs.length) * 100.0;
     }
-    return _cloudRetentionRate ?? 88.5;
+    if (totalCardsCount == 0) {
+      return 0.0;
+    }
+    return _cloudRetentionRate;
   }
 
   List<Flashcard> get allCards {
@@ -229,10 +259,10 @@ class StudyRepository extends ChangeNotifier {
   }
 
   // -------------------------------------------------------------
-  // Subject CRUD (Cloud + Local Cache)
+  // Subject CRUD (Cloud + Per-User Local Cache)
   // -------------------------------------------------------------
 
-  Future<bool> addSubject({
+  Future<Subject?> addSubject({
     required String name,
     required int colorValue,
   }) async {
@@ -251,15 +281,17 @@ class StudyRepository extends ChangeNotifier {
         final idx = _subjects.indexWhere((s) => s.id == tempId);
         if (idx != -1) {
           _subjects[idx] = created;
+        } else {
+          _subjects.insert(0, created);
         }
         await _saveToCache();
         notifyListeners();
-        return true;
+        return created;
       }
     }
 
     await _saveToCache();
-    return true;
+    return optimistic;
   }
 
   Future<void> deleteSubject(String subjectId) async {
@@ -267,7 +299,7 @@ class StudyRepository extends ChangeNotifier {
     _decks.removeWhere((d) => d.subjectId == subjectId);
     notifyListeners();
 
-    if (ApiClient.instance.isAuthenticated) {
+    if (ApiClient.instance.isAuthenticated && !subjectId.startsWith('sub_')) {
       await ApiClient.instance.delete('/subjects/$subjectId');
     }
     await _saveToCache();
@@ -323,6 +355,10 @@ class StudyRepository extends ChangeNotifier {
       rating: rating,
       timestamp: DateTime.now(),
     ));
+
+    if (_studyStreakDays == 0) {
+      _studyStreakDays = 1;
+    }
 
     notifyListeners();
     await _saveToCache();
@@ -381,10 +417,10 @@ class StudyRepository extends ChangeNotifier {
   }
 
   // -------------------------------------------------------------
-  // Deck & Card CRUD (Cloud + Local Cache)
+  // Deck & Card CRUD (Cloud + Per-User Local Cache)
   // -------------------------------------------------------------
 
-  Future<void> addDeck({
+  Future<Deck?> addDeck({
     required String title,
     required String description,
     required String subjectId,
@@ -409,7 +445,7 @@ class StudyRepository extends ChangeNotifier {
         'description': description,
         'colorHex': toHexColorString(colorValue),
       };
-      if (!subjectId.startsWith('sub_')) {
+      if (subjectId.isNotEmpty && !subjectId.startsWith('sub_')) {
         payload['subjectId'] = subjectId;
       }
 
@@ -420,11 +456,20 @@ class StudyRepository extends ChangeNotifier {
         if (idx != -1) {
           _decks[idx] = created;
         }
+        // If backend also auto-created a default subject when none existed, sync subjects
+        if (_subjects.isEmpty) {
+          await fetchAllFromCloud();
+        } else {
+          await _saveToCache();
+          notifyListeners();
+        }
+        return created;
       }
     }
 
     await _saveToCache();
     notifyListeners();
+    return newDeck;
   }
 
   Future<void> toggleFavoriteDeck(String deckId) async {
@@ -517,220 +562,5 @@ class StudyRepository extends ChangeNotifier {
     if (ApiClient.instance.isAuthenticated && !cardId.startsWith('card_')) {
       await ApiClient.instance.delete('/cards/$cardId');
     }
-  }
-
-  // -------------------------------------------------------------
-  // Authentic Domain Seed Data (Fallback before first cloud sync)
-  // -------------------------------------------------------------
-
-  void _initializeSeedData() {
-    _subjects.addAll([
-      const Subject(id: 'sub_net', name: 'Networking', colorValue: 0xFF3B82F6),
-      const Subject(id: 'sub_os', name: 'Operating Systems', colorValue: 0xFFA855F7),
-      const Subject(id: 'sub_db', name: 'Databases', colorValue: 0xFF10B981),
-      const Subject(id: 'sub_algo', name: 'Algorithms', colorValue: 0xFFF59E0B),
-    ]);
-
-    final now = DateTime.now();
-
-    final netCards = [
-      Flashcard(
-        id: 'card_net_1',
-        deckId: 'deck_net',
-        question: 'Explain the difference between TCP 3-Way Handshake and 4-Way Teardown.',
-        answer:
-            'Handshake establishes reliable connection (SYN -> SYN-ACK -> ACK). Teardown gracefully closes both simplex channels (FIN -> ACK -> FIN -> ACK).',
-        explanation:
-            'Because TCP is full-duplex, each direction must be terminated independently by sending a FIN packet.',
-        tags: ['Transport Layer', 'TCP/IP', 'Protocols'],
-        cardType: FlashcardType.standard,
-        repetitions: 3,
-        intervalDays: 6,
-        easeFactor: 2.4,
-        nextReviewDate: now.subtract(const Duration(hours: 4)),
-        timesReviewed: 4,
-        timesForgot: 1,
-        masteryStatus: CardMasteryStatus.reviewing,
-      ),
-      Flashcard(
-        id: 'card_net_2',
-        deckId: 'deck_net',
-        question: 'What is CIDR Subnetting and why was it introduced to replace classful addressing?',
-        answer:
-            'Classless Inter-Domain Routing (CIDR) uses variable-length subnet masking (/24, /27) to allocate IP addresses efficiently and reduce global BGP routing table bloat.',
-        explanation:
-            'Classful addressing (Class A, B, C) caused massive waste because organizations were assigned entire /16 or /8 blocks regardless of real need.',
-        tags: ['IP Addressing', 'Subnets', 'Routing'],
-        cardType: FlashcardType.definition,
-        repetitions: 1,
-        intervalDays: 1,
-        easeFactor: 1.7,
-        nextReviewDate: now.subtract(const Duration(hours: 1)),
-        timesReviewed: 3,
-        timesForgot: 2,
-        masteryStatus: CardMasteryStatus.learning,
-      ),
-      Flashcard(
-        id: 'card_net_3',
-        deckId: 'deck_net',
-        question: 'How does TLS 1.3 handshake improve latency over TLS 1.2?',
-        answer:
-            'TLS 1.3 reduces the handshake to a single round-trip (1-RTT) by combining key exchange with the cipher suite negotiation in ClientHello.',
-        explanation: 'It also introduces 0-RTT resumption for returning clients.',
-        tags: ['Security', 'TLS/SSL', 'Encryption'],
-        cardType: FlashcardType.standard,
-        repetitions: 4,
-        intervalDays: 14,
-        easeFactor: 2.6,
-        nextReviewDate: now.add(const Duration(days: 8)),
-        timesReviewed: 5,
-        timesForgot: 0,
-        masteryStatus: CardMasteryStatus.mastered,
-      ),
-      Flashcard(
-        id: 'card_net_4',
-        deckId: 'deck_net',
-        question: 'What is the purpose of the ARP (Address Resolution Protocol)?',
-        answer:
-            'ARP resolves a known Layer 3 IPv4 address into its corresponding Layer 2 physical MAC address on a local broadcast network.',
-        explanation:
-            'Without ARP, a host cannot build Ethernet frames to forward packets to local destinations or the default gateway.',
-        tags: ['Link Layer', 'ARP', 'Ethernet'],
-        cardType: FlashcardType.definition,
-        repetitions: 2,
-        intervalDays: 3,
-        easeFactor: 2.3,
-        nextReviewDate: now.add(const Duration(days: 2)),
-        timesReviewed: 3,
-        timesForgot: 1,
-        masteryStatus: CardMasteryStatus.reviewing,
-      ),
-    ];
-
-    final osCards = [
-      Flashcard(
-        id: 'card_os_1',
-        deckId: 'deck_os',
-        question: 'What are the 4 Coffman conditions required for a Deadlock to occur?',
-        answer: '1. Mutual Exclusion\n2. Hold and Wait\n3. No Preemption\n4. Circular Wait',
-        explanation:
-            'Breaking any single one of these four conditions mathematically guarantees that deadlock cannot occur.',
-        tags: ['Concurrency', 'Deadlocks', 'Kernel'],
-        cardType: FlashcardType.standard,
-        repetitions: 1,
-        intervalDays: 1,
-        easeFactor: 1.6,
-        nextReviewDate: now.subtract(const Duration(hours: 2)),
-        timesReviewed: 4,
-        timesForgot: 3,
-        masteryStatus: CardMasteryStatus.learning,
-      ),
-      Flashcard(
-        id: 'card_os_2',
-        deckId: 'deck_os',
-        question: 'Compare Mutex vs. Counting Semaphore in thread synchronization.',
-        answer:
-            'A Mutex is a locking mechanism with ownership (only the thread that locked it can unlock it). A Semaphore is a signaling mechanism without ownership.',
-        explanation:
-            'Counting semaphores allow up to N concurrent threads access to a finite pool of shared resources.',
-        tags: ['Threads', 'Synchronization', 'Primitives'],
-        cardType: FlashcardType.standard,
-        repetitions: 3,
-        intervalDays: 7,
-        easeFactor: 2.5,
-        nextReviewDate: now.add(const Duration(days: 5)),
-        timesReviewed: 3,
-        timesForgot: 0,
-        masteryStatus: CardMasteryStatus.mastered,
-      ),
-      Flashcard(
-        id: 'card_os_3',
-        deckId: 'deck_os',
-        question: 'What is a Translation Lookaside Buffer (TLB) and why is TLB Hit Ratio critical?',
-        answer:
-            'The TLB is a hardware associative cache inside the MMU storing recent virtual-to-physical page table translations.',
-        explanation:
-            'A TLB miss requires walking multi-level page tables in main RAM, doubling or quadrupling memory access latency.',
-        tags: ['Virtual Memory', 'MMU', 'Hardware'],
-        cardType: FlashcardType.definition,
-        repetitions: 0,
-        intervalDays: 0,
-        easeFactor: 2.5,
-        nextReviewDate: now.subtract(const Duration(minutes: 30)),
-        timesReviewed: 2,
-        timesForgot: 1,
-        masteryStatus: CardMasteryStatus.learning,
-      ),
-    ];
-
-    final dbCards = [
-      Flashcard(
-        id: 'card_db_1',
-        deckId: 'deck_db',
-        question: 'Define the 4 ACID properties of database transactions.',
-        answer:
-            'Atomicity (all-or-nothing), Consistency (valid state invariants), Isolation (concurrent serializability), Durability (WAL persistence after commit).',
-        explanation: 'Write-Ahead Logging (WAL) ensures Atomicity and Durability across power failures.',
-        tags: ['Transactions', 'ACID', 'SQL'],
-        cardType: FlashcardType.standard,
-        repetitions: 5,
-        intervalDays: 21,
-        easeFactor: 2.7,
-        nextReviewDate: now.add(const Duration(days: 15)),
-        timesReviewed: 5,
-        timesForgot: 0,
-        masteryStatus: CardMasteryStatus.mastered,
-      ),
-      Flashcard(
-        id: 'card_db_2',
-        deckId: 'deck_db',
-        question: 'Why do relational databases prefer B+Trees over Binary Search Trees for disk indexes?',
-        answer:
-            'B+Trees have a high fan-out (hundreds of keys per 4KB/16KB page), minimizing tree height and disk I/O seeks, and link leaf nodes sequentially for fast range scans.',
-        explanation: 'All data pointers reside strictly in the leaf nodes of a B+Tree.',
-        tags: ['Indexing', 'B+Tree', 'Storage Engine'],
-        cardType: FlashcardType.standard,
-        repetitions: 1,
-        intervalDays: 1,
-        easeFactor: 1.75,
-        nextReviewDate: now.subtract(const Duration(hours: 3)),
-        timesReviewed: 3,
-        timesForgot: 2,
-        masteryStatus: CardMasteryStatus.learning,
-      ),
-    ];
-
-    _decks.addAll([
-      Deck(
-        id: 'deck_net',
-        subjectId: 'sub_net',
-        title: 'TCP/IP & Routing Architecture',
-        description: 'Transport layer handshakes, CIDR subnetting, ARP, and TLS 1.3.',
-        colorValue: 0xFF3B82F6,
-        cards: netCards,
-        createdAt: now.subtract(const Duration(days: 12)),
-        isFavorite: true,
-      ),
-      Deck(
-        id: 'deck_os',
-        subjectId: 'sub_os',
-        title: 'Kernel & Concurrency Primitives',
-        description: 'Deadlocks, synchronization locks, virtual memory paging, and TLB caching.',
-        colorValue: 0xFFA855F7,
-        cards: osCards,
-        createdAt: now.subtract(const Duration(days: 9)),
-        isFavorite: true,
-      ),
-      Deck(
-        id: 'deck_db',
-        subjectId: 'sub_db',
-        title: 'Database Internals & Indexing',
-        description: 'ACID isolation levels, B+Tree storage engines, and WAL recovery.',
-        colorValue: 0xFF10B981,
-        cards: dbCards,
-        createdAt: now.subtract(const Duration(days: 6)),
-        isFavorite: false,
-      ),
-    ]);
   }
 }

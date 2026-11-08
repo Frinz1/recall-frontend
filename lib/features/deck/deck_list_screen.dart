@@ -6,6 +6,7 @@ import '../../core/theme/app_typography.dart';
 import '../../core/widgets/app_button.dart';
 import '../../core/widgets/empty_state_view.dart';
 import '../../core/widgets/toast_feedback.dart';
+import '../subject/subject_list_screen.dart';
 import 'deck_detail_screen.dart';
 
 class DeckListScreen extends StatefulWidget {
@@ -44,10 +45,20 @@ class _DeckListScreenState extends State<DeckListScreen> {
             title: const Text('My Decks & Library', style: AppTypography.titleLarge),
             actions: [
               IconButton(
+                icon: const Icon(Icons.create_new_folder_outlined),
+                tooltip: 'Manage Subjects',
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute<void>(builder: (_) => const SubjectListScreen()),
+                  );
+                },
+              ),
+              IconButton(
                 icon: const Icon(Icons.add_circle_outline_rounded),
                 tooltip: 'Create New Deck',
                 onPressed: () => _openCreateDeckDialog(context),
               ),
+              const SizedBox(width: 4),
             ],
           ),
           body: Column(
@@ -81,13 +92,29 @@ class _DeckListScreenState extends State<DeckListScreen> {
                 ),
               ),
 
-              // Subject Filter Chips
+              // Subject Filter Chips + Quick Add Subject Button
               SizedBox(
                 height: 48,
                 child: ListView(
                   scrollDirection: Axis.horizontal,
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
                   children: [
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: ActionChip(
+                        avatar: const Icon(Icons.add_rounded, size: 16, color: AppColors.primary),
+                        label: Text(
+                          'New Subject',
+                          style: AppTypography.badge.copyWith(color: AppColors.primary),
+                        ),
+                        backgroundColor: AppColors.bgSurface1,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                          side: const BorderSide(color: AppColors.primary),
+                        ),
+                        onPressed: () => _openCreateSubjectDialog(context),
+                      ),
+                    ),
                     _buildChip(
                       label: 'All Subjects',
                       isSelected: _selectedSubjectId == null,
@@ -108,12 +135,12 @@ class _DeckListScreenState extends State<DeckListScreen> {
               Expanded(
                 child: filteredDecks.isEmpty
                     ? EmptyStateView(
-                        icon: Icons.search_off_rounded,
+                        icon: Icons.style_outlined,
                         title: 'No Decks Found',
                         description: _searchQuery.isNotEmpty
                             ? 'No decks match "$_searchQuery".'
-                            : 'No flashcard decks in this subject category.',
-                        ctaLabel: 'Create Deck',
+                            : 'Create a subject and your first flashcard deck to start studying.',
+                        ctaLabel: 'Create New Deck',
                         onCtaPressed: () => _openCreateDeckDialog(context),
                       )
                     : ListView.builder(
@@ -143,14 +170,14 @@ class _DeckListScreenState extends State<DeckListScreen> {
         label: Text(
           label,
           style: AppTypography.badge.copyWith(
-            color: isSelected ? Colors.white : AppColors.textSecondary,
+            color: isSelected ? AppColors.bgCanvas : AppColors.textSecondary,
           ),
         ),
         selected: isSelected,
         onSelected: (_) => onTap(),
         backgroundColor: AppColors.bgSurface1,
         selectedColor: AppColors.primary,
-        checkmarkColor: Colors.white,
+        checkmarkColor: AppColors.bgCanvas,
         showCheckmark: false,
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
         shape: RoundedRectangleBorder(
@@ -175,7 +202,7 @@ class _DeckListScreenState extends State<DeckListScreen> {
         borderRadius: BorderRadius.circular(16),
         onTap: () {
           Navigator.of(context).push(
-            MaterialPageRoute(
+            MaterialPageRoute<void>(
               builder: (_) => DeckDetailScreen(deckId: deck.id),
             ),
           );
@@ -204,7 +231,7 @@ class _DeckListScreenState extends State<DeckListScreen> {
                         Text(deck.title, style: AppTypography.titleMedium),
                         const SizedBox(height: 4),
                         Text(
-                          deck.description,
+                          deck.description.isEmpty ? 'No description provided.' : deck.description,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                           style: AppTypography.bodySmall,
@@ -219,6 +246,20 @@ class _DeckListScreenState extends State<DeckListScreen> {
                     ),
                     onPressed: () {
                       StudyRepository.instance.toggleFavoriteDeck(deck.id);
+                    },
+                  ),
+                  IconButton(
+                    icon: const Icon(
+                      Icons.delete_outline_rounded,
+                      color: AppColors.textMuted,
+                      size: 20,
+                    ),
+                    tooltip: 'Delete Deck',
+                    onPressed: () async {
+                      await StudyRepository.instance.deleteDeck(deck.id);
+                      if (context.mounted) {
+                        ToastFeedback.showInfo(context, 'Deck "${deck.title}" deleted.');
+                      }
                     },
                   ),
                 ],
@@ -246,8 +287,10 @@ class _DeckListScreenState extends State<DeckListScreen> {
                     )
                   else
                     Text(
-                      'All caught up!',
-                      style: AppTypography.badge.copyWith(color: AppColors.success),
+                      deck.totalCards == 0 ? 'Add cards to start' : 'All caught up!',
+                      style: AppTypography.badge.copyWith(
+                        color: deck.totalCards == 0 ? AppColors.textMuted : AppColors.success,
+                      ),
                     ),
                 ],
               ),
@@ -268,14 +311,20 @@ class _DeckListScreenState extends State<DeckListScreen> {
     );
   }
 
-  void _openCreateDeckDialog(BuildContext context) {
-    final titleCtrl = TextEditingController();
-    final descCtrl = TextEditingController();
-    final repo = StudyRepository.instance;
-    String selectedSub = repo.subjects.first.id;
+  void _openCreateSubjectDialog(BuildContext context, {ValueChanged<Subject>? onCreated}) {
+    final nameCtrl = TextEditingController();
     int selectedColor = 0xFF6366F1;
+    final colorOptions = [
+      0xFF6366F1,
+      0xFF3B82F6,
+      0xFF10B981,
+      0xFFA855F7,
+      0xFFF59E0B,
+      0xFFEF4444,
+      0xFF06B6D4,
+    ];
 
-    showDialog(
+    showDialog<void>(
       context: context,
       builder: (ctx) {
         return StatefulBuilder(
@@ -286,42 +335,52 @@ class _DeckListScreenState extends State<DeckListScreen> {
                 borderRadius: BorderRadius.circular(20),
                 side: const BorderSide(color: AppColors.borderSubtle),
               ),
-              title: const Text('Create New Deck', style: AppTypography.titleLarge),
+              title: const Text('New Subject', style: AppTypography.titleLarge),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   TextField(
-                    controller: titleCtrl,
+                    controller: nameCtrl,
+                    autofocus: true,
                     style: AppTypography.bodyMedium.copyWith(color: Colors.white),
-                    decoration: const InputDecoration(
-                      labelText: 'Deck Title',
-                      hintText: 'e.g., Computer Architecture',
+                    decoration: InputDecoration(
+                      labelText: 'Subject Name',
+                      hintText: 'e.g. Data Structures, Networking',
+                      filled: true,
+                      fillColor: AppColors.bgSurface2,
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                     ),
                   ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: descCtrl,
-                    style: AppTypography.bodyMedium.copyWith(color: Colors.white),
-                    decoration: const InputDecoration(
-                      labelText: 'Description',
-                      hintText: 'What concepts are covered?',
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  const Text('Subject', style: AppTypography.labelMedium),
-                  const SizedBox(height: 6),
-                  DropdownButtonFormField<String>(
-                    value: selectedSub,
-                    dropdownColor: AppColors.bgSurface2,
-                    items: repo.subjects.map((s) {
-                      return DropdownMenuItem(value: s.id, child: Text(s.name));
+                  const SizedBox(height: 18),
+                  const Text('Theme Color', style: AppTypography.labelMedium),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: colorOptions.map((c) {
+                      final isSelected = selectedColor == c;
+                      return GestureDetector(
+                        onTap: () => setDialogState(() => selectedColor = c),
+                        child: Container(
+                          width: 32,
+                          height: 32,
+                          decoration: BoxDecoration(
+                            color: Color(c),
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: isSelected ? Colors.white : Colors.transparent,
+                              width: 2.5,
+                            ),
+                          ),
+                          child: isSelected
+                              ? const Center(
+                                  child: Icon(Icons.check, size: 16, color: Colors.white),
+                                )
+                              : null,
+                        ),
+                      );
                     }).toList(),
-                    onChanged: (val) {
-                      if (val != null) {
-                        setDialogState(() => selectedSub = val);
-                      }
-                    },
                   ),
                 ],
               ),
@@ -331,18 +390,211 @@ class _DeckListScreenState extends State<DeckListScreen> {
                   child: const Text('Cancel'),
                 ),
                 AppButton(
-                  label: 'Create',
-                  onPressed: () {
-                    final t = titleCtrl.text.trim();
-                    if (t.isEmpty) return;
-                    repo.addDeck(
-                      title: t,
-                      description: descCtrl.text.trim(),
-                      subjectId: selectedSub,
+                  label: 'Create Subject',
+                  onPressed: () async {
+                    final name = nameCtrl.text.trim();
+                    if (name.isEmpty) {
+                      ToastFeedback.showError(context, 'Please enter a subject name.');
+                      return;
+                    }
+                    Navigator.of(ctx).pop();
+                    final created = await StudyRepository.instance.addSubject(
+                      name: name,
                       colorValue: selectedColor,
                     );
+                    if (created != null && onCreated != null) {
+                      onCreated(created);
+                    }
+                    if (context.mounted) {
+                      ToastFeedback.showSuccess(context, 'Subject "$name" saved to cloud!');
+                    }
+                  },
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _openCreateDeckDialog(BuildContext context) {
+    final titleCtrl = TextEditingController();
+    final descCtrl = TextEditingController();
+    final newSubjectCtrl = TextEditingController();
+    final repo = StudyRepository.instance;
+    String? selectedSub = repo.subjects.isNotEmpty ? repo.subjects.first.id : null;
+    int selectedColor = 0xFF3B82F6;
+    final colorOptions = [
+      0xFF3B82F6,
+      0xFF6366F1,
+      0xFF10B981,
+      0xFFA855F7,
+      0xFFF59E0B,
+      0xFFEF4444,
+    ];
+
+    showDialog<void>(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            final currentSubjects = repo.subjects;
+            if (selectedSub == null && currentSubjects.isNotEmpty) {
+              selectedSub = currentSubjects.first.id;
+            }
+
+            return AlertDialog(
+              backgroundColor: AppColors.bgSurface1,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+                side: const BorderSide(color: AppColors.borderSubtle),
+              ),
+              title: const Text('Create New Deck', style: AppTypography.titleLarge),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    TextField(
+                      controller: titleCtrl,
+                      style: AppTypography.bodyMedium.copyWith(color: Colors.white),
+                      decoration: const InputDecoration(
+                        labelText: 'Deck Title',
+                        hintText: 'e.g., Computer Architecture',
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: descCtrl,
+                      style: AppTypography.bodyMedium.copyWith(color: Colors.white),
+                      decoration: const InputDecoration(
+                        labelText: 'Description',
+                        hintText: 'What concepts are covered?',
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('Subject Category', style: AppTypography.labelMedium),
+                        if (currentSubjects.isNotEmpty)
+                          TextButton.icon(
+                            style: TextButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              minimumSize: Size.zero,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            ),
+                            onPressed: () {
+                              _openCreateSubjectDialog(
+                                context,
+                                onCreated: (sub) {
+                                  setDialogState(() {
+                                    selectedSub = sub.id;
+                                  });
+                                },
+                              );
+                            },
+                            icon: const Icon(Icons.add, size: 15, color: AppColors.primary),
+                            label: const Text(
+                              'New Subject',
+                              style: TextStyle(fontSize: 12, color: AppColors.primary),
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    if (currentSubjects.isEmpty)
+                      TextField(
+                        controller: newSubjectCtrl,
+                        style: AppTypography.bodyMedium.copyWith(color: Colors.white),
+                        decoration: const InputDecoration(
+                          labelText: 'New Subject Name',
+                          hintText: 'e.g., Networking, Operating Systems',
+                        ),
+                      )
+                    else
+                      DropdownButtonFormField<String>(
+                        initialValue: selectedSub,
+                        dropdownColor: AppColors.bgSurface2,
+                        items: currentSubjects.map((s) {
+                          return DropdownMenuItem(value: s.id, child: Text(s.name));
+                        }).toList(),
+                        onChanged: (val) {
+                          if (val != null) {
+                            setDialogState(() => selectedSub = val);
+                          }
+                        },
+                      ),
+                    const SizedBox(height: 16),
+                    const Text('Deck Color', style: AppTypography.labelMedium),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      children: colorOptions.map((c) {
+                        final isSelected = selectedColor == c;
+                        return GestureDetector(
+                          onTap: () => setDialogState(() => selectedColor = c),
+                          child: Container(
+                            width: 28,
+                            height: 28,
+                            decoration: BoxDecoration(
+                              color: Color(c),
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: isSelected ? Colors.white : Colors.transparent,
+                                width: 2,
+                              ),
+                            ),
+                            child: isSelected
+                                ? const Icon(Icons.check, size: 14, color: Colors.white)
+                                : null,
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(),
+                  child: const Text('Cancel'),
+                ),
+                AppButton(
+                  label: 'Create Deck',
+                  onPressed: () async {
+                    final t = titleCtrl.text.trim();
+                    if (t.isEmpty) {
+                      ToastFeedback.showError(context, 'Please enter a deck title.');
+                      return;
+                    }
+
                     Navigator.of(ctx).pop();
-                    ToastFeedback.showSuccess(context, 'Deck "$t" created!');
+
+                    String targetSubjectId = selectedSub ?? '';
+                    if (currentSubjects.isEmpty) {
+                      final subName = newSubjectCtrl.text.trim().isEmpty
+                          ? 'General Studies'
+                          : newSubjectCtrl.text.trim();
+                      final createdSub = await repo.addSubject(
+                        name: subName,
+                        colorValue: selectedColor,
+                      );
+                      if (createdSub != null) {
+                        targetSubjectId = createdSub.id;
+                      }
+                    }
+
+                    await repo.addDeck(
+                      title: t,
+                      description: descCtrl.text.trim(),
+                      subjectId: targetSubjectId,
+                      colorValue: selectedColor,
+                    );
+                    if (context.mounted) {
+                      ToastFeedback.showSuccess(context, 'Deck "$t" created and saved to cloud!');
+                    }
                   },
                 ),
               ],

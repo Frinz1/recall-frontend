@@ -91,7 +91,7 @@ class AuthService extends ChangeNotifier {
           ApiClient.instance.setAuthToken(savedToken);
           _refreshToken = savedRefresh;
           _currentUser = UserProfile.fromJson(Map<String, dynamic>.from(decoded));
-          await StudyRepository.instance.loadFromCache();
+          await StudyRepository.instance.loadFromCache(userId: _currentUser!.id);
           notifyListeners();
 
           // Sync fresh profile & decks from cloud in the background
@@ -150,6 +150,7 @@ class AuthService extends ChangeNotifier {
     _refreshToken = refreshToken;
     _currentUser = user;
     _hasSeenOnboarding = true;
+    StudyRepository.instance.setActiveUser(user.id);
 
     try {
       final prefs = await SharedPreferences.getInstance();

@@ -31,7 +31,7 @@ class AppButton extends StatelessWidget {
     switch (variant) {
       case AppButtonVariant.primary:
         bg = AppColors.primary;
-        fg = Colors.white;
+        fg = AppColors.bgCanvas;
         break;
       case AppButtonVariant.secondary:
         bg = AppColors.bgSurface2;
@@ -52,11 +52,11 @@ class AppButton extends StatelessWidget {
     final buttonStyle = ElevatedButton.styleFrom(
       backgroundColor: bg,
       foregroundColor: fg,
-      disabledBackgroundColor: AppColors.bgSurface2.withOpacity(0.5),
+      disabledBackgroundColor: AppColors.bgSurface2.withValues(alpha: 0.5),
       disabledForegroundColor: AppColors.textMuted,
       elevation: 0,
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-      minimumSize: const Size(48, 48), // 48dp minimum accessible touch target
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      minimumSize: const Size(48, 48),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
         side: borderSide,
@@ -65,12 +65,12 @@ class AppButton extends StatelessWidget {
 
     Widget content;
     if (isLoading) {
-      content = const SizedBox(
+      content = SizedBox(
         width: 20,
         height: 20,
         child: CircularProgressIndicator(
-          strokeWidth: 2,
-          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+          strokeWidth: 2.2,
+          valueColor: AlwaysStoppedAnimation<Color>(fg),
         ),
       );
     } else if (icon != null) {
@@ -78,13 +78,35 @@ class AppButton extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(icon, size: 18),
+          Icon(icon, size: 18, color: fg),
           const SizedBox(width: 8),
-          Text(label, style: AppTypography.titleMedium.copyWith(color: fg, fontSize: 14)),
+          Flexible(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: AppTypography.titleMedium.copyWith(
+                color: fg,
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
         ],
       );
     } else {
-      content = Text(label, style: AppTypography.titleMedium.copyWith(color: fg, fontSize: 14));
+      content = Text(
+        label,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        textAlign: TextAlign.center,
+        style: AppTypography.titleMedium.copyWith(
+          color: fg,
+          fontSize: 14,
+          fontWeight: FontWeight.w700,
+        ),
+      );
     }
 
     final btn = ElevatedButton(

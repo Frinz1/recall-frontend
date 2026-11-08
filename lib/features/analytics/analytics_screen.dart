@@ -240,7 +240,7 @@ class AnalyticsScreen extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: List.generate(7, (i) {
-              final isCompleted = i < 5; // e.g. Mon to Fri completed
+              final isCompleted = i < streakDays.clamp(0, 7);
               return Column(
                 children: [
                   Container(
