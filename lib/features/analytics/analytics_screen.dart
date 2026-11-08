@@ -232,15 +232,16 @@ class AnalyticsScreen extends StatelessWidget {
     final startOfWeek = DateTime(now.year, now.month, now.day)
         .subtract(Duration(days: currentWeekdayIndex));
 
-    String dateKey(DateTime d) => '${d.year}-${d.month}-${d.day}';
-    final activeDates = <String>{};
+    String dateKey(DateTime d) =>
+        '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+    final activeDates = <String>{...repo.cloudActiveReviewDates};
 
     for (final log in repo.reviewLogs) {
-      activeDates.add(dateKey(log.timestamp));
+      activeDates.add(dateKey(log.timestamp.toLocal()));
     }
     for (final c in repo.allCards) {
-      if (c.lastReviewedDate != null) {
-        activeDates.add(dateKey(c.lastReviewedDate!));
+      if (c.timesReviewed > 0 && c.lastReviewedDate != null) {
+        activeDates.add(dateKey(c.lastReviewedDate!.toLocal()));
       }
     }
     // If streakDays > 0 from cloud, mark consecutive days ending today

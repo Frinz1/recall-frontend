@@ -18,8 +18,12 @@ class StudyRepository extends ChangeNotifier {
   final List<ReviewLog> _reviewLogs = [];
   int _studyStreakDays = 0;
   double _cloudRetentionRate = 0.0;
+  int _cloudReviewedTodayCount = 0;
+  String? _cloudReviewedTodayDateKey;
+  final List<String> _cloudActiveReviewDates = [];
   bool _isSyncing = false;
   DateTime? _lastSyncedAt;
+  int _idSequence = 0;
 
   // User Study Preferences
   int _dailyGoalCards = 20;
@@ -41,6 +45,7 @@ class StudyRepository extends ChangeNotifier {
   }
 
   List<ReviewLog> get reviewLogs => List.unmodifiable(_reviewLogs);
+  List<String> get cloudActiveReviewDates => List.unmodifiable(_cloudActiveReviewDates);
   int get studyStreakDays => _studyStreakDays;
   bool get isSyncing => _isSyncing;
   DateTime? get lastSyncedAt => _lastSyncedAt;
@@ -52,9 +57,17 @@ class StudyRepository extends ChangeNotifier {
   String get _decksCacheKey => 'recall_decks_v2_${_activeUserId ?? "guest"}';
   String get _retentionCacheKey => 'recall_retention_v2_${_activeUserId ?? "guest"}';
   String get _streakCacheKey => 'recall_streak_v2_${_activeUserId ?? "guest"}';
+  String get _reviewedTodayCacheKey => 'recall_rev_today_v2_${_activeUserId ?? "guest"}';
+  String get _reviewedTodayDateCacheKey => 'recall_rev_today_date_v2_${_activeUserId ?? "guest"}';
+  String get _activeDatesCacheKey => 'recall_active_dates_v2_${_activeUserId ?? "guest"}';
   String get _goalCacheKey => 'recall_goal_v2_${_activeUserId ?? "guest"}';
   String get _shuffleCacheKey => 'recall_shuffle_v2_${_activeUserId ?? "guest"}';
   String get _includeNewCacheKey => 'recall_inc_new_v2_${_activeUserId ?? "guest"}';
+
+  String _todayLocalKey() {
+    final now = DateTime.now();
+    return '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+  }
 
   void setActiveUser(String? userId) {
     if (_activeUserId != userId) {
@@ -64,6 +77,9 @@ class StudyRepository extends ChangeNotifier {
       _reviewLogs.clear();
       _studyStreakDays = 0;
       _cloudRetentionRate = 0.0;
+      _cloudReviewedTodayCount = 0;
+      _cloudReviewedTodayDateKey = null;
+      _cloudActiveReviewDates.clear();
       notifyListeners();
     }
   }
@@ -84,9 +100,19 @@ class StudyRepository extends ChangeNotifier {
       final decksJson = prefs.getString(_decksCacheKey);
       final cachedRetention = prefs.getDouble(_retentionCacheKey);
       final cachedStreak = prefs.getInt(_streakCacheKey);
+      final cachedRevDate = prefs.getString(_reviewedTodayDateCacheKey);
+      final cachedRevToday = prefs.getInt(_reviewedTodayCacheKey);
+      final cachedActiveDates = prefs.getStringList(_activeDatesCacheKey);
+      final todayKey = _todayLocalKey();
 
       _cloudRetentionRate = cachedRetention ?? 0.0;
       _studyStreakDays = cachedStreak ?? 0;
+      _cloudReviewedTodayDateKey = todayKey;
+      _cloudReviewedTodayCount =
+          (cachedRevDate == todayKey) ? (cachedRevToday ?? 0) : 0;
+      _cloudActiveReviewDates
+        ..clear()
+        ..addAll(cachedActiveDates ?? const []);
       _dailyGoalCards = prefs.getInt(_goalCacheKey) ?? 20;
       _shuffleStudyCards = prefs.getBool(_shuffleCacheKey) ?? false;
       _includeNewInDue = prefs.getBool(_includeNewCacheKey) ?? true;
@@ -125,10 +151,16 @@ class StudyRepository extends ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       final subjectsJson = jsonEncode(_subjects.map((s) => s.toJson()).toList());
       final decksJson = jsonEncode(_decks.map((d) => d.toJson()).toList());
+      final todayKey = _todayLocalKey();
+      final effectiveCloudToday =
+          (_cloudReviewedTodayDateKey == todayKey) ? _cloudReviewedTodayCount : 0;
       await prefs.setString(_subjectsCacheKey, subjectsJson);
       await prefs.setString(_decksCacheKey, decksJson);
       await prefs.setDouble(_retentionCacheKey, _cloudRetentionRate);
       await prefs.setInt(_streakCacheKey, _studyStreakDays);
+      await prefs.setInt(_reviewedTodayCacheKey, effectiveCloudToday);
+      await prefs.setString(_reviewedTodayDateCacheKey, todayKey);
+      await prefs.setStringList(_activeDatesCacheKey, _cloudActiveReviewDates);
       await prefs.setInt(_goalCacheKey, _dailyGoalCards);
       await prefs.setBool(_shuffleCacheKey, _shuffleStudyCards);
       await prefs.setBool(_includeNewCacheKey, _includeNewInDue);
@@ -161,6 +193,9 @@ class StudyRepository extends ChangeNotifier {
         await prefs.remove(_decksCacheKey);
         await prefs.remove(_retentionCacheKey);
         await prefs.remove(_streakCacheKey);
+        await prefs.remove(_reviewedTodayCacheKey);
+        await prefs.remove(_reviewedTodayDateCacheKey);
+        await prefs.remove(_activeDatesCacheKey);
       }
       // Also remove legacy global cache keys so old data never resurfaces
       await prefs.remove('recall_cached_subjects_v1');
@@ -174,6 +209,16 @@ class StudyRepository extends ChangeNotifier {
     _reviewLogs.clear();
     _studyStreakDays = 0;
     _cloudRetentionRate = 0.0;
+    _cloudReviewedTodayCount = 0;
+    _cloudReviewedTodayDateKey = null;
+    _cloudActiveReviewDates.clear();
+    notifyListeners();
+  }
+
+  @visibleForTesting
+  void debugSetCloudReviewedToday({required int count, required String dateKey}) {
+    _cloudReviewedTodayCount = count;
+    _cloudReviewedTodayDateKey = dateKey;
     notifyListeners();
   }
 
@@ -244,10 +289,24 @@ class StudyRepository extends ChangeNotifier {
           if (metrics['streakDays'] is num) {
             _studyStreakDays = (metrics['streakDays'] as num).toInt();
           }
+          if (metrics['reviewedToday'] is num) {
+            _cloudReviewedTodayCount = (metrics['reviewedToday'] as num).toInt();
+            _cloudReviewedTodayDateKey = _todayLocalKey();
+          }
+          if (metrics['activeReviewDates'] is List) {
+            _cloudActiveReviewDates
+              ..clear()
+              ..addAll(
+                (metrics['activeReviewDates'] as List).map((e) => e.toString()),
+              );
+          }
         }
       } else if (_decks.isEmpty) {
         _cloudRetentionRate = 0.0;
         _studyStreakDays = 0;
+        _cloudReviewedTodayCount = 0;
+        _cloudReviewedTodayDateKey = null;
+        _cloudActiveReviewDates.clear();
       }
 
       _lastSyncedAt = DateTime.now();
@@ -277,19 +336,34 @@ class StudyRepository extends ChangeNotifier {
 
   int get reviewedTodayCount {
     final now = DateTime.now();
-    bool isToday(DateTime d) =>
-        d.year == now.year && d.month == now.month && d.day == now.day;
+    bool isToday(DateTime d) {
+      final local = d.toLocal();
+      return local.year == now.year && local.month == now.month && local.day == now.day;
+    }
 
-    final fromLogs = _reviewLogs.where((r) => isToday(r.timestamp)).map((r) => r.cardId).toSet();
-    final fromCards = allCards
-        .where((c) => c.lastReviewedDate != null && isToday(c.lastReviewedDate!))
-        .map((c) => c.id)
-        .toSet();
-    return {...fromLogs, ...fromCards}.length;
+    final logsCount = _reviewLogs.where((r) => isToday(r.timestamp)).length;
+    final cardsCount = allCards
+        .where(
+          (c) =>
+              c.timesReviewed > 0 &&
+              c.lastReviewedDate != null &&
+              isToday(c.lastReviewedDate!),
+        )
+        .length;
+    int maxCount = logsCount > cardsCount ? logsCount : cardsCount;
+    final effectiveCloudCount =
+        (_cloudReviewedTodayDateKey == _todayLocalKey()) ? _cloudReviewedTodayCount : 0;
+    if (effectiveCloudCount > maxCount) {
+      maxCount = effectiveCloudCount;
+    }
+    return maxCount;
   }
 
   int get totalMasteredCardsCount =>
       _decks.fold(0, (sum, deck) => sum + deck.masteredCount);
+
+  int get totalUnmasteredCardsCount =>
+      _decks.fold(0, (sum, deck) => sum + deck.unmasteredCount);
 
   double get overallRetentionRate {
     if (_reviewLogs.isNotEmpty) {
@@ -336,7 +410,7 @@ class StudyRepository extends ChangeNotifier {
     required String name,
     required int colorValue,
   }) async {
-    final tempId = 'sub_${DateTime.now().millisecondsSinceEpoch}';
+    final tempId = 'sub_${DateTime.now().millisecondsSinceEpoch}_${++_idSequence}';
     final optimistic = Subject(id: tempId, name: name, colorValue: colorValue);
     _subjects.insert(0, optimistic);
     notifyListeners();
@@ -412,6 +486,7 @@ class StudyRepository extends ChangeNotifier {
     if (cardIndex == -1) return;
 
     final card = deck.cards[cardIndex];
+    final previousReviewedToday = reviewedTodayCount;
 
     // Execute local SM-2 algorithm immediately for zero-latency UI
     final result = SM2Engine.calculateNextReview(
@@ -439,12 +514,19 @@ class StudyRepository extends ChangeNotifier {
     _decks[deckIndex] = deck.copyWith(cards: updatedCards);
 
     _reviewLogs.add(ReviewLog(
-      id: 'log_${DateTime.now().millisecondsSinceEpoch}',
+      id: 'log_${DateTime.now().millisecondsSinceEpoch}_${++_idSequence}',
       cardId: cardId,
       deckId: deckId,
       rating: rating,
       timestamp: DateTime.now(),
     ));
+
+    final todayKey = _todayLocalKey();
+    _cloudReviewedTodayDateKey = todayKey;
+    _cloudReviewedTodayCount = previousReviewedToday + 1;
+    if (!_cloudActiveReviewDates.contains(todayKey)) {
+      _cloudActiveReviewDates.add(todayKey);
+    }
 
     if (_studyStreakDays == 0) {
       _studyStreakDays = 1;
@@ -516,7 +598,7 @@ class StudyRepository extends ChangeNotifier {
     required String subjectId,
     required int colorValue,
   }) async {
-    final tempId = 'deck_${DateTime.now().millisecondsSinceEpoch}';
+    final tempId = 'deck_${DateTime.now().millisecondsSinceEpoch}_${++_idSequence}';
     final newDeck = Deck(
       id: tempId,
       subjectId: subjectId,
@@ -624,6 +706,7 @@ class StudyRepository extends ChangeNotifier {
         intervalDays: 0,
         easeFactor: 2.5,
         nextReviewDate: DateTime.now(),
+        clearLastReviewedDate: true,
         timesReviewed: 0,
         timesForgot: 0,
         masteryStatus: CardMasteryStatus.learning,
@@ -631,6 +714,14 @@ class StudyRepository extends ChangeNotifier {
     }).toList();
 
     _decks[idx] = _decks[idx].copyWith(cards: resetCards);
+    _reviewLogs.removeWhere((r) => r.deckId == deckId);
+    if (allCards.every((c) => c.timesReviewed == 0) && _reviewLogs.isEmpty) {
+      _cloudRetentionRate = 0.0;
+      _cloudReviewedTodayCount = 0;
+      _cloudReviewedTodayDateKey = null;
+      _cloudActiveReviewDates.clear();
+      _studyStreakDays = 0;
+    }
     notifyListeners();
     await _saveToCache();
 
@@ -645,6 +736,10 @@ class StudyRepository extends ChangeNotifier {
     }
     _reviewLogs.clear();
     _cloudRetentionRate = 0.0;
+    _cloudReviewedTodayCount = 0;
+    _cloudReviewedTodayDateKey = null;
+    _cloudActiveReviewDates.clear();
+    _studyStreakDays = 0;
     notifyListeners();
     await _saveToCache();
   }
@@ -660,7 +755,7 @@ class StudyRepository extends ChangeNotifier {
     final deckIndex = _decks.indexWhere((d) => d.id == deckId);
     if (deckIndex == -1) return;
 
-    final tempId = 'card_${DateTime.now().millisecondsSinceEpoch}';
+    final tempId = 'card_${DateTime.now().millisecondsSinceEpoch}_${++_idSequence}';
     final newCard = Flashcard(
       id: tempId,
       deckId: deckId,

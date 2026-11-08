@@ -53,7 +53,9 @@ class DashboardScreen extends StatelessWidget {
         final reviewedToday = repo.reviewedTodayCount;
         final dailyGoal = repo.dailyGoalCards;
 
-        // Recommend deck: prioritize Starred decks with due cards, then highest due count
+        // Recommend deck: prioritize Starred/active decks with due cards, then unmastered cards
+        int effectiveDue(Deck d) =>
+            repo.includeNewInDue ? d.dueCardsCount : d.scheduledDueCount;
         Deck? priorityDeck;
         if (decks.isNotEmpty) {
           final sorted = List<Deck>.from(decks)
@@ -61,11 +63,22 @@ class DashboardScreen extends StatelessWidget {
               if (a.isFavorite != b.isFavorite) {
                 return a.isFavorite ? -1 : 1;
               }
-              return b.dueCardsCount.compareTo(a.dueCardsCount);
+              final aDue = effectiveDue(a);
+              final bDue = effectiveDue(b);
+              if (aDue != bDue) {
+                return bDue.compareTo(aDue);
+              }
+              return b.unmasteredCount.compareTo(a.unmasteredCount);
             });
           priorityDeck = sorted.firstWhere(
-            (d) => d.dueCardsCount > 0,
-            orElse: () => sorted.first,
+            (d) => effectiveDue(d) > 0,
+            orElse: () => sorted.firstWhere(
+              (d) => d.unmasteredCount > 0,
+              orElse: () => sorted.firstWhere(
+                (d) => d.totalCards > 0,
+                orElse: () => sorted.first,
+              ),
+            ),
           );
         }
 
@@ -522,6 +535,8 @@ class DashboardScreen extends StatelessWidget {
     required int dailyGoal,
   }) {
     final goalProgress = dailyGoal > 0 ? (reviewedToday / dailyGoal).clamp(0.0, 1.0) : 0.0;
+    final unmasteredCount = repo.totalUnmasteredCardsCount;
+    final remainingGoal = (dailyGoal - reviewedToday).clamp(0, dailyGoal);
 
     String headline;
     String subtext;
@@ -531,17 +546,29 @@ class DashboardScreen extends StatelessWidget {
           'Create a Subject and Flashcard Deck to begin your SM-2 spaced repetition schedule.';
     } else if (scheduledDue > 0) {
       headline = '$scheduledDue Cards Due Today';
-      subtext = newCount > 0
-          ? 'Plus $newCount new cards ready ($reviewedToday / $dailyGoal daily goal).'
-          : 'Complete your scheduled SM-2 reviews today to extend retention.';
+      subtext = remainingGoal > 0
+          ? 'Complete your scheduled reviews ($remainingGoal left for your $dailyGoal-card daily goal).'
+          : (newCount > 0
+              ? 'Plus $newCount new cards ready ($reviewedToday / $dailyGoal daily goal).'
+              : 'Complete your scheduled SM-2 reviews today to extend retention.');
     } else if (newCount > 0 && totalDue > 0) {
       headline = '$newCount New Cards Ready';
+      subtext = remainingGoal > 0
+          ? 'Start your first study pass ($remainingGoal left for your $dailyGoal-card daily goal).'
+          : 'Start your first study pass on these flashcards to schedule SM-2 intervals.';
+    } else if (remainingGoal > 0 && repo.totalCardsCount > 0) {
+      headline = '$remainingGoal Cards Left for Daily Goal';
+      subtext = unmasteredCount > 0
+          ? 'You have $unmasteredCount cards still in learning/reviewing ($reviewedToday / $dailyGoal daily goal). Keep practicing!'
+          : 'You completed $reviewedToday / $dailyGoal reviews today. Review your decks to hit your daily target!';
+    } else if (unmasteredCount > 0) {
+      headline = '$unmasteredCount Cards Still Learning';
       subtext =
-          'Start your first study pass on these flashcards to schedule SM-2 intervals.';
+          'Daily goal reached ($reviewedToday / $dailyGoal)! Practice your $unmasteredCount unmastered cards anytime.';
     } else {
       headline = 'All Caught Up Today!';
       subtext =
-          'You completed $reviewedToday reviews today. Explore your library or take a quiz.';
+          'You completed $reviewedToday / $dailyGoal reviews and mastered all ${repo.totalCardsCount} cards!';
     }
 
     return Container(
@@ -691,10 +718,12 @@ class DashboardScreen extends StatelessWidget {
           // 7-Day Capsule Calendar Strip (Mon..Sun vertical pills)
           _buildSevenDayCapsuleStrip(repo),
 
-          if (totalDue > 0 && priorityDeck != null) ...[
+          if (priorityDeck != null && repo.totalCardsCount > 0) ...[
             const SizedBox(height: 18),
             AppButton(
-              label: 'Start Smart Review (${priorityDeck.title})',
+              label: totalDue > 0
+                  ? 'Start Smart Review (${priorityDeck.title})'
+                  : 'Continue Goal Review (${priorityDeck.title})',
               icon: Icons.play_arrow_rounded,
               isExpanded: true,
               onPressed: () {
@@ -702,7 +731,7 @@ class DashboardScreen extends StatelessWidget {
                   MaterialPageRoute<void>(
                     builder: (_) => StudySessionScreen(
                       deck: priorityDeck,
-                      onlyDueCards: true,
+                      onlyDueCards: totalDue > 0,
                     ),
                   ),
                 );
@@ -729,15 +758,16 @@ class DashboardScreen extends StatelessWidget {
     final startOfWeek = DateTime(now.year, now.month, now.day)
         .subtract(Duration(days: currentWeekdayIndex));
 
-    String dateKey(DateTime d) => '${d.year}-${d.month}-${d.day}';
-    final activeDates = <String>{};
+    String dateKey(DateTime d) =>
+        '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+    final activeDates = <String>{...repo.cloudActiveReviewDates};
 
     for (final log in repo.reviewLogs) {
-      activeDates.add(dateKey(log.timestamp));
+      activeDates.add(dateKey(log.timestamp.toLocal()));
     }
     for (final c in repo.allCards) {
-      if (c.lastReviewedDate != null) {
-        activeDates.add(dateKey(c.lastReviewedDate!));
+      if (c.timesReviewed > 0 && c.lastReviewedDate != null) {
+        activeDates.add(dateKey(c.lastReviewedDate!.toLocal()));
       }
     }
     if (repo.studyStreakDays > 0 && activeDates.isEmpty) {
@@ -836,8 +866,10 @@ class DashboardScreen extends StatelessWidget {
       statusLabel = '${deck.newCardsCount} new';
     } else if (deck.totalCards == 0) {
       statusLabel = '0 cards • New deck';
+    } else if (deck.unmasteredCount > 0) {
+      statusLabel = '${deck.unmasteredCount} learning';
     } else {
-      statusLabel = 'All caught up';
+      statusLabel = '100% Mastered ✨';
     }
 
     return Container(

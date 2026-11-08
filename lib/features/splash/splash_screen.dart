@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/theme/app_colors.dart';
@@ -15,53 +16,125 @@ class SplashScreen extends StatefulWidget {
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMixin {
-  late final AnimationController _progressController;
-  late final AnimationController _pulseController;
-  late final Animation<double> _progressAnimation;
-  late final Animation<double> _scaleAnimation;
-  late final Animation<double> _fadeAnimation;
+class _SplashScreenState extends State<SplashScreen>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<Offset> _slideFromRight;
+  late final Animation<double> _bounceDy;
+  late final Animation<double> _squashX;
+  late final Animation<double> _squashY;
+  late final Animation<double> _darkReveal;
+  late final Animation<double> _brandFade;
+  late final Animation<Offset> _brandSlideUp;
   Timer? _timer;
-
-  static const List<String> _studyTips = [
-    'Active recall strengthens neural pathways 3× faster than passive re-reading.',
-    'Reviewing a concept right before you forget it doubles your memory interval.',
-    'Star your priority decks (★) to pin them to the top of your library.',
-    'Keep daily study sessions focused: 15–20 cards per session yields peak retention.',
-  ];
-
-  late final String _selectedTip;
 
   @override
   void initState() {
     super.initState();
-    _selectedTip = _studyTips[DateTime.now().second % _studyTips.length];
 
-    _progressController = AnimationController(
+    _controller = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 3600),
     )..forward();
 
-    _pulseController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1400),
-    )..repeat(reverse: true);
-
-    _progressAnimation = Tween<double>(begin: 0.08, end: 1.0).animate(
-      CurvedAnimation(parent: _progressController, curve: Curves.easeInOutCubic),
-    );
-
-    _scaleAnimation = Tween<double>(begin: 0.65, end: 1.0).animate(
+    // 1. 0.00 -> 0.30: Emblem slides in horizontally from right to center on pure white canvas
+    _slideFromRight = Tween<Offset>(
+      begin: const Offset(2.5, 0.0),
+      end: Offset.zero,
+    ).animate(
       CurvedAnimation(
-        parent: _progressController,
-        curve: const Interval(0.0, 0.38, curve: Curves.elasticOut),
+        parent: _controller,
+        curve: const Interval(0.0, 0.30, curve: Curves.easeOutCubic),
       ),
     );
 
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+    // 2. 0.28 -> 0.68: 3 playful vertical hops in the center
+    _bounceDy = TweenSequence<double>([
+      TweenSequenceItem(
+        tween: Tween<double>(begin: 0.0, end: -42.0)
+            .chain(CurveTween(curve: Curves.easeOutQuad)),
+        weight: 18,
+      ),
+      TweenSequenceItem(
+        tween: Tween<double>(begin: -42.0, end: 0.0)
+            .chain(CurveTween(curve: Curves.easeInQuad)),
+        weight: 18,
+      ),
+      TweenSequenceItem(
+        tween: Tween<double>(begin: 0.0, end: -22.0)
+            .chain(CurveTween(curve: Curves.easeOutQuad)),
+        weight: 16,
+      ),
+      TweenSequenceItem(
+        tween: Tween<double>(begin: -22.0, end: 0.0)
+            .chain(CurveTween(curve: Curves.easeInQuad)),
+        weight: 16,
+      ),
+      TweenSequenceItem(
+        tween: Tween<double>(begin: 0.0, end: -10.0)
+            .chain(CurveTween(curve: Curves.easeOutQuad)),
+        weight: 16,
+      ),
+      TweenSequenceItem(
+        tween: Tween<double>(begin: -10.0, end: 0.0)
+            .chain(CurveTween(curve: Curves.easeInQuad)),
+        weight: 16,
+      ),
+    ]).animate(
       CurvedAnimation(
-        parent: _progressController,
-        curve: const Interval(0.0, 0.28, curve: Curves.easeOut),
+        parent: _controller,
+        curve: const Interval(0.28, 0.68),
+      ),
+    );
+
+    // Subtle squash-and-stretch during the 3 hops
+    _squashX = TweenSequence<double>([
+      TweenSequenceItem(tween: Tween<double>(begin: 1.0, end: 0.94), weight: 18),
+      TweenSequenceItem(tween: Tween<double>(begin: 0.94, end: 1.08), weight: 18),
+      TweenSequenceItem(tween: Tween<double>(begin: 1.08, end: 0.96), weight: 16),
+      TweenSequenceItem(tween: Tween<double>(begin: 0.96, end: 1.05), weight: 16),
+      TweenSequenceItem(tween: Tween<double>(begin: 1.05, end: 0.98), weight: 16),
+      TweenSequenceItem(tween: Tween<double>(begin: 0.98, end: 1.0), weight: 16),
+    ]).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: const Interval(0.28, 0.68),
+      ),
+    );
+
+    _squashY = TweenSequence<double>([
+      TweenSequenceItem(tween: Tween<double>(begin: 1.0, end: 1.06), weight: 18),
+      TweenSequenceItem(tween: Tween<double>(begin: 1.06, end: 0.92), weight: 18),
+      TweenSequenceItem(tween: Tween<double>(begin: 0.92, end: 1.04), weight: 16),
+      TweenSequenceItem(tween: Tween<double>(begin: 1.04, end: 0.95), weight: 16),
+      TweenSequenceItem(tween: Tween<double>(begin: 0.95, end: 1.02), weight: 16),
+      TweenSequenceItem(tween: Tween<double>(begin: 1.02, end: 1.0), weight: 16),
+    ]).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: const Interval(0.28, 0.68),
+      ),
+    );
+
+    // 3. 0.58 -> 0.82: Pure White (#FFFFFF) -> Midnight Slate (AppColors.bgCanvas) radial reveal
+    _darkReveal = CurvedAnimation(
+      parent: _controller,
+      curve: const Interval(0.58, 0.82, curve: Curves.easeInOutCubic),
+    );
+
+    // 4. 0.62 -> 0.90: Wordmark & Tagline slide/fade up underneath the logo
+    _brandFade = CurvedAnimation(
+      parent: _controller,
+      curve: const Interval(0.62, 0.90, curve: Curves.easeOutCubic),
+    );
+
+    _brandSlideUp = Tween<Offset>(
+      begin: const Offset(0.0, 0.28),
+      end: Offset.zero,
+    ).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: const Interval(0.62, 0.90, curve: Curves.easeOutCubic),
       ),
     );
 
@@ -72,7 +145,10 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
         }
       });
     } else if (widget.nextScreen != null) {
-      _timer = Timer(const Duration(milliseconds: 3800), _checkSessionAndNavigate);
+      _timer = Timer(
+        const Duration(milliseconds: 3800),
+        _checkSessionAndNavigate,
+      );
     }
   }
 
@@ -90,211 +166,194 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
     }
   }
 
-  String _statusStageText(double progress) {
-    if (progress < 0.38) return 'Initializing SM-2 Spaced Repetition...';
-    if (progress < 0.78) return 'Syncing your subjects & decks...';
-    return 'Workspace ready!';
-  }
-
   @override
   void dispose() {
     _timer?.cancel();
-    _progressController.dispose();
-    _pulseController.dispose();
+    _controller.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.bgCanvas,
-      body: SafeArea(
-        child: SizedBox(
-          width: double.infinity,
-          height: double.infinity,
-          child: FadeTransition(
-            opacity: _fadeAnimation,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 28),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const SizedBox(height: 36),
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, _) {
+        final dy = _bounceDy.value;
+        final jumpRatio = (-dy / 42.0).clamp(0.0, 1.0);
+        final isDarkDominant = _darkReveal.value > 0.5;
 
-                  // Center Animated Brand Emblem
-                  Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      ScaleTransition(
-                        scale: _scaleAnimation,
-                        child: AnimatedBuilder(
-                          animation: _pulseController,
-                          builder: (context, child) {
-                            final glowSpread = 4.0 + (_pulseController.value * 8.0);
-                            return Container(
-                              width: 104,
-                              height: 104,
-                              padding: const EdgeInsets.only(bottom: 5),
-                              decoration: BoxDecoration(
-                                color: AppColors.primaryDark,
-                                borderRadius: BorderRadius.circular(30),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: AppColors.primary.withValues(alpha: 0.28),
-                                    blurRadius: 32,
-                                    spreadRadius: glowSpread,
-                                    offset: const Offset(0, 8),
-                                  ),
-                                ],
-                              ),
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  color: AppColors.bgSurface1,
-                                  borderRadius: BorderRadius.circular(28),
-                                  border: Border.all(color: AppColors.primary, width: 2.2),
-                                ),
-                                child: const Center(
-                                  child: Icon(
-                                    Icons.bolt_rounded,
-                                    color: AppColors.primary,
-                                    size: 54,
-                                  ),
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                      const SizedBox(height: 26),
-                      Text(
-                        'Recall',
-                        textAlign: TextAlign.center,
-                        style: AppTypography.displayLarge.copyWith(
-                          fontSize: 40,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: -0.8,
-                          color: AppColors.textPrimary,
-                          height: 1.0,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      Text(
-                        'Study smarter, remember longer.',
-                        textAlign: TextAlign.center,
-                        style: AppTypography.bodyMedium.copyWith(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.accentCyan,
-                        ),
-                      ),
-                    ],
+        return Scaffold(
+          backgroundColor: Colors.white,
+          body: Stack(
+            alignment: Alignment.center,
+            children: [
+              // Expanding Circular Radial Reveal from Pure White -> Midnight Slate
+              Positioned.fill(
+                child: CustomPaint(
+                  painter: _CircularRevealPainter(
+                    progress: _darkReveal.value,
+                    color: AppColors.bgCanvas,
                   ),
+                ),
+              ),
 
-                  // Bottom Section: Study Tip Card + Staged Progress Bar
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 28),
+              // Center Kinetic Brand Choreography
+              SafeArea(
+                child: Center(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 28),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                          decoration: BoxDecoration(
-                            color: AppColors.bgSurface1,
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: AppColors.borderSubtle),
-                          ),
-                          child: Row(
+                        // Sliding + Bouncing Recall Emblem
+                        SlideTransition(
+                          position: _slideFromRight,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
                             children: [
-                              Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color: AppColors.primary.withValues(alpha: 0.15),
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: const Icon(
-                                  Icons.lightbulb_outline_rounded,
-                                  color: AppColors.primary,
-                                  size: 20,
+                              Transform.translate(
+                                offset: Offset(0, dy),
+                                child: Transform.scale(
+                                  scaleX: _squashX.value,
+                                  scaleY: _squashY.value,
+                                  alignment: Alignment.bottomCenter,
+                                  child: Container(
+                                    width: 104,
+                                    height: 104,
+                                    padding: const EdgeInsets.only(bottom: 5),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.primaryDark,
+                                      borderRadius: BorderRadius.circular(30),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: isDarkDominant
+                                              ? AppColors.primary.withValues(alpha: 0.34)
+                                              : Colors.black.withValues(alpha: 0.16),
+                                          blurRadius: 28,
+                                          spreadRadius: isDarkDominant ? 4 : 1,
+                                          offset: const Offset(0, 10),
+                                        ),
+                                      ],
+                                    ),
+                                    child: Container(
+                                      decoration: BoxDecoration(
+                                        color: AppColors.bgSurface1,
+                                        borderRadius: BorderRadius.circular(28),
+                                        border: Border.all(
+                                          color: AppColors.primary,
+                                          width: 2.4,
+                                        ),
+                                      ),
+                                      child: const Center(
+                                        child: Icon(
+                                          Icons.bolt_rounded,
+                                          color: AppColors.primary,
+                                          size: 54,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
                                 ),
                               ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'STUDY TIP',
-                                      style: AppTypography.badge.copyWith(
-                                        color: AppColors.primary,
-                                        fontSize: 10,
-                                      ),
+                              const SizedBox(height: 12),
+                              // Reactive Floor Shadow Oval under the bouncing logo
+                              Transform.scale(
+                                scaleX: 1.0 - (jumpRatio * 0.45),
+                                scaleY: 1.0 - (jumpRatio * 0.35),
+                                child: Container(
+                                  width: 56,
+                                  height: 10,
+                                  decoration: BoxDecoration(
+                                    color: (isDarkDominant
+                                            ? Colors.black
+                                            : AppColors.bgCanvas)
+                                        .withValues(
+                                      alpha: (0.22 * (1.0 - jumpRatio * 0.6))
+                                          .clamp(0.05, 0.28),
                                     ),
-                                    const SizedBox(height: 3),
-                                    Text(
-                                      _selectedTip,
-                                      style: AppTypography.bodySmall.copyWith(
-                                        color: AppColors.textSecondary,
-                                        height: 1.35,
-                                      ),
-                                    ),
-                                  ],
+                                    borderRadius: BorderRadius.circular(999),
+                                  ),
                                 ),
                               ),
                             ],
                           ),
                         ),
-                        const SizedBox(height: 24),
-                        AnimatedBuilder(
-                          animation: _progressAnimation,
-                          builder: (context, _) {
-                            final pct = (_progressAnimation.value * 100).round();
-                            return Column(
+
+                        const SizedBox(height: 22),
+
+                        // Wordmark & Subtitle Reveal as Midnight Slate takes over
+                        FadeTransition(
+                          opacity: _brandFade,
+                          child: SlideTransition(
+                            position: _brandSlideUp,
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
                               children: [
-                                Container(
-                                  width: 220,
-                                  height: 8,
-                                  decoration: BoxDecoration(
-                                    color: AppColors.bgSurface1,
-                                    borderRadius: BorderRadius.circular(999),
-                                    border: Border.all(color: AppColors.borderSubtle, width: 1),
-                                  ),
-                                  child: FractionallySizedBox(
-                                    alignment: Alignment.centerLeft,
-                                    widthFactor: _progressAnimation.value,
-                                    child: Container(
-                                      decoration: BoxDecoration(
-                                        gradient: const LinearGradient(
-                                          colors: [AppColors.primary, AppColors.accentCyan],
-                                        ),
-                                        borderRadius: BorderRadius.circular(999),
-                                      ),
-                                    ),
+                                Text(
+                                  'Recall',
+                                  textAlign: TextAlign.center,
+                                  style: AppTypography.displayLarge.copyWith(
+                                    fontSize: 40,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: -0.8,
+                                    color: AppColors.textPrimary,
+                                    height: 1.0,
                                   ),
                                 ),
                                 const SizedBox(height: 10),
                                 Text(
-                                  '${_statusStageText(_progressAnimation.value)} ($pct%)',
+                                  'Study smarter, remember longer.',
                                   textAlign: TextAlign.center,
-                                  style: AppTypography.bodySmall.copyWith(
-                                    fontSize: 12,
+                                  style: AppTypography.bodyMedium.copyWith(
+                                    fontSize: 15,
                                     fontWeight: FontWeight.w600,
-                                    color: AppColors.textMuted,
+                                    color: AppColors.accentCyan,
                                   ),
                                 ),
                               ],
-                            );
-                          },
+                            ),
+                          ),
                         ),
                       ],
                     ),
                   ),
-                ],
+                ),
               ),
-            ),
+            ],
           ),
-        ),
-      ),
+        );
+      },
     );
   }
+}
+
+class _CircularRevealPainter extends CustomPainter {
+  final double progress;
+  final Color color;
+
+  const _CircularRevealPainter({
+    required this.progress,
+    required this.color,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (progress <= 0.0) return;
+
+    final center = Offset(size.width / 2, size.height / 2);
+    final maxRadius = math.sqrt(
+      (size.width * size.width) + (size.height * size.height),
+    );
+    final currentRadius = maxRadius * progress;
+
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+
+    canvas.drawCircle(center, currentRadius, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _CircularRevealPainter oldDelegate) =>
+      oldDelegate.progress != progress || oldDelegate.color != color;
 }

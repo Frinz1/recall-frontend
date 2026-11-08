@@ -40,16 +40,33 @@ class _StudySessionScreenState extends State<StudySessionScreen> {
     super.initState();
     _sessionStartTime = DateTime.now();
     final repo = StudyRepository.instance;
+    final activeDeck = repo.getDeckById(widget.deck.id) ?? widget.deck;
     if (widget.onlyDueCards) {
-      _sessionCards = widget.deck.cards.where((c) {
+      _sessionCards = activeDeck.cards.where((c) {
         if (!repo.includeNewInDue && c.isNewCard) return false;
         return c.isDue;
       }).toList();
       if (_sessionCards.isEmpty) {
-        _sessionCards = List.from(widget.deck.cards);
+        _sessionCards = List<Flashcard>.from(activeDeck.cards)
+          ..sort((a, b) {
+            final aMastered = a.masteryStatus == CardMasteryStatus.mastered;
+            final bMastered = b.masteryStatus == CardMasteryStatus.mastered;
+            if (aMastered != bMastered) {
+              return aMastered ? 1 : -1;
+            }
+            return a.easeFactor.compareTo(b.easeFactor);
+          });
       }
     } else {
-      _sessionCards = List.from(widget.deck.cards);
+      _sessionCards = List<Flashcard>.from(activeDeck.cards)
+        ..sort((a, b) {
+          final aMastered = a.masteryStatus == CardMasteryStatus.mastered;
+          final bMastered = b.masteryStatus == CardMasteryStatus.mastered;
+          if (aMastered != bMastered) {
+            return aMastered ? 1 : -1;
+          }
+          return a.easeFactor.compareTo(b.easeFactor);
+        });
     }
 
     if (repo.shuffleStudyCards && _sessionCards.length > 1) {

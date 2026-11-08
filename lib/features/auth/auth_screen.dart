@@ -360,7 +360,10 @@ class _AuthScreenState extends State<AuthScreen> {
                 letterSpacing: 10,
                 color: AppColors.textMuted,
               ),
+              filled: false,
               border: InputBorder.none,
+              enabledBorder: InputBorder.none,
+              focusedBorder: InputBorder.none,
             ),
           ),
         ),
@@ -703,11 +706,15 @@ class _AuthScreenState extends State<AuthScreen> {
                 : Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text(
-                        _isLogin ? 'Sign In to Recall' : 'Send 6-Digit Verification Code',
-                        style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
+                      Flexible(
+                        child: Text(
+                          _isLogin ? 'Sign In to Recall' : 'Send 6-Digit Verification Code',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -785,60 +792,69 @@ class _AuthScreenState extends State<AuthScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Container(
-          height: 52,
-          decoration: BoxDecoration(
-            color: AppColors.bgSurface1,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: hasError ? AppColors.danger : AppColors.borderSubtle,
-              width: hasError ? 1.5 : 1.0,
-            ),
+        TextField(
+          controller: controller,
+          obscureText: isPassword && _obscurePassword,
+          keyboardType: keyboardType,
+          onChanged: onChanged,
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: AppColors.textPrimary,
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Row(
-            children: [
-              Icon(
-                icon,
-                size: 20,
-                color: hasError ? AppColors.danger : AppColors.textSecondary,
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: TextField(
-                  controller: controller,
-                  obscureText: isPassword && _obscurePassword,
-                  keyboardType: keyboardType,
-                  onChanged: onChanged,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: AppColors.textPrimary,
-                  ),
-                  decoration: InputDecoration(
-                    hintText: hintText,
-                    hintStyle: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w400,
-                      color: AppColors.textSecondary.withValues(alpha: 0.6),
+          decoration: InputDecoration(
+            hintText: hintText,
+            hintStyle: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w400,
+              color: AppColors.textSecondary.withValues(alpha: 0.6),
+            ),
+            filled: true,
+            fillColor: AppColors.bgSurface1,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 16,
+            ),
+            prefixIcon: Icon(
+              icon,
+              size: 20,
+              color: hasError ? AppColors.danger : AppColors.textSecondary,
+            ),
+            suffixIcon: isPassword
+                ? IconButton(
+                    icon: Icon(
+                      _obscurePassword
+                          ? Icons.visibility_outlined
+                          : Icons.visibility_off_outlined,
+                      size: 20,
+                      color: AppColors.textSecondary,
                     ),
-                    border: InputBorder.none,
-                    isDense: true,
-                    contentPadding: EdgeInsets.zero,
-                  ),
-                ),
+                    splashRadius: 18,
+                    onPressed: () =>
+                        setState(() => _obscurePassword = !_obscurePassword),
+                  )
+                : null,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide(
+                color: hasError ? AppColors.danger : AppColors.borderSubtle,
+                width: 1.2,
               ),
-              if (isPassword)
-                IconButton(
-                  icon: Icon(
-                    _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
-                    size: 20,
-                    color: AppColors.textSecondary,
-                  ),
-                  splashRadius: 18,
-                  onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
-                ),
-            ],
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide(
+                color: hasError ? AppColors.danger : AppColors.borderSubtle,
+                width: 1.2,
+              ),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide(
+                color: hasError ? AppColors.danger : AppColors.primary,
+                width: 1.8,
+              ),
+            ),
           ),
         ),
         if (hasError) ...[
@@ -876,10 +892,10 @@ class _GoogleLogoPainter extends CustomPainter {
     final double w = size.width;
     final double h = size.height;
 
-    final paintBlue = Paint()..color = const Color(0xFF4285F4);
-    final paintGreen = Paint()..color = const Color(0xFF34A853);
-    final paintYellow = Paint()..color = const Color(0xFFFBBC05);
-    final paintRed = Paint()..color = const Color(0xFFEA4335);
+    final paintBlue = Paint()..color = AppColors.googleBlue;
+    final paintGreen = Paint()..color = AppColors.googleGreen;
+    final paintYellow = Paint()..color = AppColors.googleYellow;
+    final paintRed = Paint()..color = AppColors.googleRed;
 
     final center = Offset(w / 2, h / 2);
     final radius = w / 2;

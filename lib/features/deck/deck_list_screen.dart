@@ -250,8 +250,10 @@ class _DeckListScreenState extends State<DeckListScreen> {
       statusLabel = '${deck.newCardsCount} new';
     } else if (deck.totalCards == 0) {
       statusLabel = '0 cards • New deck';
+    } else if (deck.unmasteredCount > 0) {
+      statusLabel = '${deck.unmasteredCount} learning';
     } else {
-      statusLabel = 'All caught up';
+      statusLabel = '100% Mastered ✨';
     }
 
     return Container(

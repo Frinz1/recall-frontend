@@ -105,10 +105,10 @@ class Flashcard {
       intervalDays: (json['intervalDays'] as num?)?.toInt() ?? 0,
       easeFactor: (json['easeFactor'] as num?)?.toDouble() ?? 2.5,
       nextReviewDate: json['nextReviewDate'] != null
-          ? DateTime.tryParse(json['nextReviewDate'].toString()) ?? DateTime.now()
+          ? DateTime.tryParse(json['nextReviewDate'].toString())?.toLocal() ?? DateTime.now()
           : DateTime.now(),
       lastReviewedDate: json['lastReviewedDate'] != null
-          ? DateTime.tryParse(json['lastReviewedDate'].toString())
+          ? DateTime.tryParse(json['lastReviewedDate'].toString())?.toLocal()
           : null,
       timesReviewed: (json['timesReviewed'] as num?)?.toInt() ?? 0,
       timesForgot: (json['timesForgot'] as num?)?.toInt() ?? 0,
@@ -172,6 +172,7 @@ class Flashcard {
     double? easeFactor,
     DateTime? nextReviewDate,
     DateTime? lastReviewedDate,
+    bool clearLastReviewedDate = false,
     int? timesReviewed,
     int? timesForgot,
     CardMasteryStatus? masteryStatus,
@@ -188,7 +189,8 @@ class Flashcard {
       intervalDays: intervalDays ?? this.intervalDays,
       easeFactor: easeFactor ?? this.easeFactor,
       nextReviewDate: nextReviewDate ?? this.nextReviewDate,
-      lastReviewedDate: lastReviewedDate ?? this.lastReviewedDate,
+      lastReviewedDate:
+          clearLastReviewedDate ? null : (lastReviewedDate ?? this.lastReviewedDate),
       timesReviewed: timesReviewed ?? this.timesReviewed,
       timesForgot: timesForgot ?? this.timesForgot,
       masteryStatus: masteryStatus ?? this.masteryStatus,
@@ -243,7 +245,7 @@ class Deck {
       colorValue: colorVal,
       cards: parsedCards,
       createdAt: json['createdAt'] != null
-          ? DateTime.tryParse(json['createdAt'].toString()) ?? DateTime.now()
+          ? DateTime.tryParse(json['createdAt'].toString())?.toLocal() ?? DateTime.now()
           : DateTime.now(),
       isFavorite: json['isFavorite'] == true,
     );
@@ -268,6 +270,7 @@ class Deck {
   int get scheduledDueCount => cards.where((c) => c.isScheduledDue).length;
   int get dueCardsCount => cards.where((c) => c.isDue).length;
   int get masteredCount => cards.where((c) => c.masteryStatus == CardMasteryStatus.mastered).length;
+  int get unmasteredCount => cards.where((c) => c.masteryStatus != CardMasteryStatus.mastered).length;
   int get learningCount => cards.where((c) => c.masteryStatus == CardMasteryStatus.learning).length;
 
   double get masteryPercentage {

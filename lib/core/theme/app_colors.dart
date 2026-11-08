@@ -48,12 +48,22 @@ class AppColors {
   static const Color ratingGood = Color(0xFF38BDF8);
   static const Color ratingEasy = Color(0xFF10B981);
 
-  // Hero & Sculpted Dock Tokens
+  // Hero, Review Card & Sculpted Dock Tokens
   static const Color heroSurfaceStart = Color(0xFF1E1B4B);
   static const Color heroSurfaceEnd = Color(0xFF312E81);
   static const Color heroTextMuted = Color(0xFFC7D2FE);
   static const Color cradleStart = Color(0xFF6366F1);
   static const Color cradleEnd = Color(0xFF10B981);
+  static const Color cardFrontStart = Color(0xFF162038);
+  static const Color cardFrontEnd = Color(0xFF11182B);
+  static const Color cardBackStart = Color(0xFF132A2E);
+  static const Color cardBackEnd = Color(0xFF0F1F2E);
+
+  // Google OAuth Emblem Tokens
+  static const Color googleBlue = Color(0xFF4285F4);
+  static const Color googleGreen = Color(0xFF34A853);
+  static const Color googleYellow = Color(0xFFFBBC05);
+  static const Color googleRed = Color(0xFFEA4335);
 
   // 6 Vibrant Color-Blocked Bento Themes
   static const int themeSageEmerald = 0xFF2D6A4F;

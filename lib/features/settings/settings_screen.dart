@@ -183,7 +183,7 @@ class SettingsScreen extends StatelessWidget {
                         icon: Icons.info_outline_rounded,
                         iconColor: AppColors.accentCyan,
                         title: 'About Recall & Features',
-                        valueText: 'v2.4.0',
+                        valueText: 'v2.5.0',
                         onTap: () => _openAboutRecallSheet(context),
                       ),
                     ],
@@ -380,7 +380,7 @@ class SettingsScreen extends StatelessWidget {
     CurvedBottomSheet.show<void>(
       context: context,
       title: 'About Recall',
-      subtitle: 'Version 2.4.0 • Study smarter, remember longer.',
+      subtitle: 'Version 2.5.0 • Study smarter, remember longer.',
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,

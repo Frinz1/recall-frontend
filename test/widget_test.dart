@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:recall/app.dart';
+import 'package:recall/core/algorithms/sm2_engine.dart';
+import 'package:recall/core/models/flashcard_model.dart';
 import 'package:recall/core/services/study_repository.dart';
 import 'package:recall/core/theme/app_colors.dart';
 import 'package:recall/core/widgets/quick_create_sheet.dart';
+import 'package:recall/features/auth/auth_screen.dart';
+import 'package:recall/features/splash/splash_screen.dart';
+import 'package:recall/features/study/widgets/flip_card_widget.dart';
 import 'package:recall/features/subject/subject_list_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -259,5 +264,257 @@ void main() {
     await tester.tap(find.text('Settings'));
     await tester.pumpAndSettle();
     expect(find.text('Daily Review Goal'), findsOneWidget);
+  });
+
+  test('Flashcard.fromJson converts UTC timestamps to local timezone', () {
+    final card = Flashcard.fromJson({
+      'id': 'c1',
+      'deckId': 'd1',
+      'question': 'What is BGP path vector routing?',
+      'answer': 'Autonomous system border routing protocol.',
+      'nextReviewDate': '2026-11-08T22:37:00.000Z',
+      'lastReviewedDate': '2026-11-08T22:37:00.000Z',
+      'timesReviewed': 2,
+      'masteryStatus': 'learning',
+    });
+
+    expect(card.nextReviewDate.isUtc, isFalse);
+    expect(card.lastReviewedDate, isNotNull);
+    expect(card.lastReviewedDate!.isUtc, isFalse);
+  });
+
+  testWidgets(
+      'Dashboard Hero Banner reflects remaining Daily Goal and unmastered cards instead of falsely showing All Caught Up',
+      (WidgetTester tester) async {
+    final repo = StudyRepository.instance;
+    repo.setActiveUser('user_goal_test');
+    await repo.setDailyGoalCards(30);
+
+    final sub = await repo.addSubject(
+      name: 'Systems Programming',
+      colorValue: AppColors.themeRoyalIndigo,
+    );
+    final deck = await repo.addDeck(
+      title: 'Virtual Memory & Paging',
+      description: 'TLB shootdowns and page tables',
+      subjectId: sub!.id,
+      colorValue: AppColors.themeRoyalIndigo,
+    );
+    await repo.addCardToDeck(
+      deckId: deck!.id,
+      question: 'Why does a TLB miss trigger a page table walk?',
+      answer: 'Because the virtual-to-physical translation is not cached in the TLB.',
+      explanation: 'Multi-level page tables reduce memory overhead for sparse address spaces.',
+      tags: const ['MMU', 'TLB'],
+      cardType: FlashcardType.standard,
+    );
+
+    final cardId = repo.decks.first.cards.first.id;
+    // Review card with Good (moves nextReviewDate to tomorrow, masteryStatus remains learning, reviewedToday = 1)
+    await repo.recordCardReview(
+      deckId: deck.id,
+      cardId: cardId,
+      rating: RecallRating.good,
+    );
+
+    expect(repo.totalDueCardsCount, 0);
+    expect(repo.totalUnmasteredCardsCount, 1);
+    expect(repo.reviewedTodayCount, 1);
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: MainNavigationShell(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Hero Banner must NOT say "All Caught Up Today!" when 29 cards remain for the 30-card goal
+    expect(find.text('All Caught Up Today!'), findsNothing);
+    expect(find.text('29 Cards Left for Daily Goal'), findsOneWidget);
+    expect(find.textContaining('Continue Goal Review'), findsOneWidget);
+    // Bento Deck Card must show "1 learning" instead of "All caught up"
+    expect(find.text('1 learning'), findsOneWidget);
+    expect(find.text('All caught up'), findsNothing);
+  });
+
+  testWidgets(
+      'Kinetic SplashScreen runs slide-in, bounce, and radial reveal without STUDY TIP clutter',
+      (WidgetTester tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: SplashScreen(),
+      ),
+    );
+
+    // Verify no legacy STUDY TIP box
+    expect(find.text('STUDY TIP'), findsNothing);
+    expect(find.text('Recall'), findsOneWidget);
+
+    // Advance through slide-in (0.30), center bounce (0.50), and dark reveal (0.85)
+    await tester.pump(const Duration(milliseconds: 1000));
+    await tester.pump(const Duration(milliseconds: 1000));
+    await tester.pump(const Duration(milliseconds: 1600));
+    expect(find.text('Study smarter, remember longer.'), findsOneWidget);
+  });
+
+  testWidgets(
+      'AuthScreen renders single-layer input fields and Redesigned FlipCardWidget flips cleanly',
+      (WidgetTester tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: AuthScreen(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Welcome back'), findsOneWidget);
+    expect(find.byType(TextField), findsNWidgets(2));
+
+    // Switch to Create Account
+    await tester.tap(find.text('Create Account'));
+    await tester.pumpAndSettle();
+    expect(find.byType(TextField), findsNWidgets(3));
+
+    // Test Redesigned FlipCardWidget
+    bool flipped = false;
+    final sampleCard = Flashcard(
+      id: 'card_flip_1',
+      deckId: 'deck_1',
+      question: 'What is the time complexity of B+Tree point lookup?',
+      answer: 'O(log_b N) where b is the branching factor.',
+      explanation: 'High fan-out keeps tree height between 3 and 4 levels.',
+      tags: const ['Database', 'Indexing'],
+      nextReviewDate: DateTime.now(),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: StatefulBuilder(
+            builder: (context, setState) {
+              return FlipCardWidget(
+                card: sampleCard,
+                isFlipped: flipped,
+                onFlip: () => setState(() => flipped = !flipped),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('CONCEPT • NEW'), findsOneWidget);
+    expect(find.text('Tap anywhere to reveal answer'), findsOneWidget);
+    expect(find.text('QUESTION PROMPT'), findsNothing);
+
+    await tester.tap(find.byType(FlipCardWidget));
+    await tester.pumpAndSettle();
+
+    expect(find.text('VERIFIED ANSWER'), findsOneWidget);
+    expect(find.textContaining('O(log_b N)'), findsOneWidget);
+    expect(find.textContaining('High fan-out'), findsOneWidget);
+  });
+
+  testWidgets(
+      'Repeated reviews in Continue Goal Review mode transition Hero Banner to Cards Still Learning and All Caught Up, and resetAllProgress clears lastReviewedDate & reviewedTodayCount',
+      (WidgetTester tester) async {
+    final repo = StudyRepository.instance;
+    repo.setActiveUser('user_edge_cases');
+    await repo.setDailyGoalCards(5);
+
+    final sub = await repo.addSubject(
+      name: 'Distributed Systems',
+      colorValue: AppColors.themeSageEmerald,
+    );
+    final deck = await repo.addDeck(
+      title: 'Raft & Paxos Consensus',
+      description: 'Leader election and log replication',
+      subjectId: sub!.id,
+      colorValue: AppColors.themeSageEmerald,
+    );
+    await repo.addCardToDeck(
+      deckId: deck!.id,
+      question: 'What guarantees safety across network partitions in Raft?',
+      answer: 'Quorum intersection requiring a majority of voting nodes.',
+      explanation: 'At most one leader can be elected per term.',
+      tags: const ['Consensus', 'Raft'],
+      cardType: FlashcardType.standard,
+    );
+    await repo.addCardToDeck(
+      deckId: deck.id,
+      question: 'What is a split vote in Raft leader election?',
+      answer: 'Multiple candidates split votes so no candidate achieves a majority.',
+      explanation: 'Resolved via randomized election timeouts.',
+      tags: const ['Consensus'],
+      cardType: FlashcardType.standard,
+    );
+
+    final cards = repo.decks.first.cards;
+    final c1Id = cards[0].id;
+    final c2Id = cards[1].id;
+
+    // Review c1 4 times with Hard (remains unmastered/learning) and c2 once with Hard = 5 total reviews today
+    for (int i = 0; i < 4; i++) {
+      await repo.recordCardReview(
+        deckId: deck.id,
+        cardId: c1Id,
+        rating: RecallRating.hard,
+      );
+    }
+    await repo.recordCardReview(
+      deckId: deck.id,
+      cardId: c2Id,
+      rating: RecallRating.hard,
+    );
+
+    // Daily goal (5) is now reached, but both cards are still unmastered
+    expect(repo.reviewedTodayCount, 5);
+    expect(repo.totalUnmasteredCardsCount, 2);
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: MainNavigationShell(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Hero Banner should show "2 Cards Still Learning" because daily goal is reached (5/5) but unmastered > 0
+    expect(find.text('2 Cards Still Learning'), findsOneWidget);
+    expect(find.textContaining('Continue Goal Review'), findsOneWidget);
+
+    // Now review both cards with Easy repeatedly until both reach CardMasteryStatus.mastered (repetitions >= 3, intervalDays >= 21)
+    for (int i = 0; i < 4; i++) {
+      await repo.recordCardReview(
+        deckId: deck.id,
+        cardId: c1Id,
+        rating: RecallRating.easy,
+      );
+      await repo.recordCardReview(
+        deckId: deck.id,
+        cardId: c2Id,
+        rating: RecallRating.easy,
+      );
+    }
+
+    expect(repo.totalUnmasteredCardsCount, 0);
+    expect(repo.totalMasteredCardsCount, 2);
+    expect(repo.reviewedTodayCount, 13);
+
+    await tester.pumpAndSettle();
+
+    // Now that dailyGoal is met AND unmasteredCount == 0, Hero Banner shows "All Caught Up Today!" and Deck pill shows "100% Mastered ✨"
+    expect(find.text('All Caught Up Today!'), findsOneWidget);
+    expect(find.text('100% Mastered ✨'), findsOneWidget);
+
+    // Verify resetAllProgress clears lastReviewedDate on all cards and resets reviewedTodayCount to 0
+    await repo.resetAllProgress();
+    expect(repo.reviewedTodayCount, 0);
+    expect(repo.allCards.every((c) => c.lastReviewedDate == null), isTrue);
+    expect(repo.totalUnmasteredCardsCount, 2);
+
+    // Verify midnight boundary rollover: stale cloud count from yesterday is ignored today
+    repo.debugSetCloudReviewedToday(count: 18, dateKey: '2020-01-01');
+    expect(repo.reviewedTodayCount, 0);
   });
 }
