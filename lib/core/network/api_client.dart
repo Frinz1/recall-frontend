@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'dart:io';
+import 'package:http/http.dart' as http;
 import '../config/env_config.dart';
 
 class ApiResponse<T> {
@@ -56,41 +56,34 @@ class ApiClient {
 
   Future<ApiResponse<dynamic>> _send(String method, String path, [Map<String, dynamic>? body]) async {
     final url = Uri.parse('${EnvConfig.baseUrl}$path');
-    final client = HttpClient();
 
     try {
-      HttpClientRequest request;
+      http.Response response;
+      final encodedBody = body != null ? jsonEncode(body) : null;
+
       switch (method) {
         case 'POST':
-          request = await client.postUrl(url);
+          response = await http.post(url, headers: _headers, body: encodedBody);
           break;
         case 'PATCH':
-          request = await client.patchUrl(url);
+          response = await http.patch(url, headers: _headers, body: encodedBody);
           break;
         case 'DELETE':
-          request = await client.deleteUrl(url);
+          response = await http.delete(url, headers: _headers);
           break;
         case 'GET':
         default:
-          request = await client.getUrl(url);
+          response = await http.get(url, headers: _headers);
           break;
       }
 
-      _headers.forEach((key, val) => request.headers.set(key, val));
-
-      if (body != null) {
-        request.write(jsonEncode(body));
-      }
-
-      final response = await request.close().timeout(const Duration(seconds: 10));
-      final responseBody = await response.transform(utf8.decoder).join();
       final statusCode = response.statusCode;
-
       dynamic decoded;
+
       try {
-        decoded = jsonDecode(responseBody);
+        decoded = jsonDecode(response.body);
       } catch (_) {
-        decoded = {'message': responseBody};
+        decoded = {'message': response.body};
       }
 
       if (statusCode >= 200 && statusCode < 300) {
@@ -109,20 +102,12 @@ class ApiClient {
           statusCode: statusCode,
         );
       }
-    } on SocketException catch (_) {
-      return const ApiResponse(
-        success: false,
-        message: 'Unable to reach cloud API. Please check your internet connection.',
-        statusCode: 0,
-      );
     } catch (e) {
       return ApiResponse(
         success: false,
-        message: e.toString(),
+        message: 'Network error: ${e.toString()}',
         statusCode: 0,
       );
-    } finally {
-      client.close();
     }
   }
 }
