@@ -1,30 +1,30 @@
 import 'package:flutter/material.dart';
 
-/// Semantic Design Tokens for the Recall Design System.
-/// Strictly typed surface tiers, border tokens, and domain status colors.
+/// Semantic Design Tokens for Recall — Solid Warm Honey & Obsidian System.
+/// Extracted from Google Stitch specifications.
 class AppColors {
   AppColors._();
 
   // Surface Tiers
-  static const Color bgCanvas = Color(0xFF090D16);
-  static const Color bgSurface1 = Color(0xFF111827);
-  static const Color bgSurface2 = Color(0xFF1F2937);
-  static const Color bgSurfaceElevated = Color(0xFF283548);
-  static const Color bgCard = Color(0xFF131D2E);
+  static const Color bgCanvas = Color(0xFF121316); // Deep Obsidian
+  static const Color bgSurface1 = Color(0xFF1A1C21); // Slate Card Surface
+  static const Color bgSurface2 = Color(0xFF22252C);
+  static const Color bgSurfaceElevated = Color(0xFF282B33);
+  static const Color bgCard = Color(0xFF1A1C21);
 
   // Border & Dividers
-  static const Color borderSubtle = Color(0xFF263345);
-  static const Color borderHover = Color(0xFF3B4D66);
-  static const Color borderFocus = Color(0xFF6366F1);
+  static const Color borderSubtle = Color(0xFF282B33);
+  static const Color borderHover = Color(0xFF3B404D);
+  static const Color borderFocus = Color(0xFFFFB800); // Honey Accent
 
-  // Brand Primaries (Indigo / Electric Violet)
-  static const Color primary = Color(0xFF6366F1);
-  static const Color primaryLight = Color(0xFF818CF8);
-  static const Color primaryDark = Color(0xFF4F46E5);
-  static const Color primaryGlow = Color(0x336366F1);
+  // Brand Primaries (Warm Honey Gold)
+  static const Color primary = Color(0xFFFFB800); // Honey Gold
+  static const Color primaryLight = Color(0xFFFFCA38);
+  static const Color primaryDark = Color(0xFFE5A600);
+  static const Color primaryGlow = Color(0x33FFB800);
 
   // Secondary & Accents
-  static const Color accentCyan = Color(0xFF06B6D4);
+  static const Color accentCyan = Color(0xFF38BDF8);
   static const Color accentPurple = Color(0xFFA855F7);
 
   // Functional Status Colors
@@ -38,10 +38,10 @@ class AppColors {
   static const Color infoSurface = Color(0xFF1E3A8A);
 
   // Typography Contrast Tiers
-  static const Color textPrimary = Color(0xFFF8FAFC);
-  static const Color textSecondary = Color(0xFF94A3B8);
-  static const Color textMuted = Color(0xFF64748B);
-  static const Color textInverse = Color(0xFF0F172A);
+  static const Color textPrimary = Color(0xFFFAF9F5); // Warm White
+  static const Color textSecondary = Color(0xFF9E9EA7); // Warm Sand / Grey
+  static const Color textMuted = Color(0xFF737380);
+  static const Color textInverse = Color(0xFF121316); // Charcoal on Honey
 
   // Spaced Repetition Rating Colors
   static const Color ratingAgain = Color(0xFFEF4444);

@@ -2,7 +2,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/theme/app_colors.dart';
-import '../../core/theme/app_typography.dart';
 import '../auth/auth_screen.dart';
 import '../onboarding/onboarding_screen.dart';
 
@@ -16,31 +15,22 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _scaleAnimation;
-  late Animation<double> _opacityAnimation;
+  late AnimationController _pulseController;
+  late Animation<double> _pulseAnimation;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
+    _pulseController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1400),
+    )..repeat(reverse: true);
+
+    _pulseAnimation = Tween<double>(begin: 0.4, end: 1.0).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
 
-    _scaleAnimation = CurvedAnimation(
-      parent: _controller,
-      curve: Curves.easeOutBack,
-    );
-
-    _opacityAnimation = CurvedAnimation(
-      parent: _controller,
-      curve: const Interval(0.0, 0.6, curve: Curves.easeIn),
-    );
-
-    _controller.forward();
-
-    // Check session after splash animation
+    // Auto navigate after splash entrance
     Timer(const Duration(milliseconds: 2200), _checkSessionAndNavigate);
   }
 
@@ -52,7 +42,6 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
         MaterialPageRoute(builder: (_) => widget.nextScreen),
       );
     } else {
-      // First-time or unauthenticated flow: show Onboarding first
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
           builder: (_) => OnboardingScreen(
@@ -69,7 +58,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
 
   @override
   void dispose() {
-    _controller.dispose();
+    _pulseController.dispose();
     super.dispose();
   }
 
@@ -77,77 +66,125 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.bgCanvas,
-      body: Center(
+      body: SafeArea(
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            ScaleTransition(
-              scale: _scaleAnimation,
-              child: FadeTransition(
-                opacity: _opacityAnimation,
-                child: Container(
-                  width: 96,
-                  height: 96,
+            // Top balance spacer
+            const SizedBox(height: 24),
+
+            // Center Brand Lockup (Stitch Consumer Entrance Spec)
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // App Crest Squircle: 92x92px, 28px rounded, #1A1C21, 2px border #FFB800
+                Container(
+                  width: 92,
+                  height: 92,
                   decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [AppColors.primary, Color(0xFF4338CA)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
+                    color: AppColors.bgSurface1,
                     borderRadius: BorderRadius.circular(28),
+                    border: Border.all(color: AppColors.primary, width: 2),
                     boxShadow: [
                       BoxShadow(
-                        color: AppColors.primary.withOpacity(0.4),
-                        blurRadius: 32,
-                        offset: const Offset(0, 12),
+                        color: AppColors.primaryGlow,
+                        blurRadius: 24,
+                        offset: const Offset(0, 8),
                       ),
                     ],
                   ),
                   child: const Center(
                     child: Icon(
                       Icons.bolt_rounded,
-                      color: Colors.white,
-                      size: 56,
+                      color: AppColors.primary,
+                      size: 48,
                     ),
                   ),
                 ),
-              ),
+                const SizedBox(height: 24),
+
+                // Wordmark: Recall (38px bold)
+                const Text(
+                  'Recall',
+                  style: TextStyle(
+                    fontFamily: 'Plus Jakarta Sans',
+                    fontSize: 38,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.5,
+                    color: AppColors.textPrimary,
+                    height: 1.0,
+                  ),
+                ),
+                const SizedBox(height: 10),
+
+                // Friendly Tagline
+                const Text(
+                  'Study smarter, remember longer ✨',
+                  style: TextStyle(
+                    fontFamily: 'Plus Jakarta Sans',
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 28),
-            FadeTransition(
-              opacity: _opacityAnimation,
+
+            // Bottom Section: Loading & Home Bar Indicator
+            Padding(
+              padding: const EdgeInsets.only(bottom: 24),
               child: Column(
                 children: [
-                  const Text(
-                    'RECALL',
-                    style: TextStyle(
-                      fontSize: 32,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 4.0,
-                      color: Colors.white,
+                  // Loading Bar Container: 140px x 4px
+                  Container(
+                    width: 140,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: AppColors.bgSurface1,
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(color: AppColors.borderSubtle, width: 1),
+                    ),
+                    child: AnimatedBuilder(
+                      animation: _pulseAnimation,
+                      builder: (context, child) {
+                        return FractionallySizedBox(
+                          alignment: Alignment.centerLeft,
+                          widthFactor: _pulseAnimation.value,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: AppColors.primary,
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                          ),
+                        );
+                      },
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Study smarter. Remember longer.',
-                    style: AppTypography.bodyMedium.copyWith(
+                  const SizedBox(height: 14),
+
+                  // Microcopy
+                  const Text(
+                    'Getting your cards ready...',
+                    style: TextStyle(
+                      fontFamily: 'Plus Jakarta Sans',
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
                       color: AppColors.textSecondary,
-                      letterSpacing: 0.5,
+                      letterSpacing: -0.2,
+                    ),
+                  ),
+                  const SizedBox(height: 28),
+
+                  // Home Bar Indicator
+                  Container(
+                    width: 128,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: AppColors.borderSubtle,
+                      borderRadius: BorderRadius.circular(999),
                     ),
                   ),
                 ],
-              ),
-            ),
-            const SizedBox(height: 48),
-            FadeTransition(
-              opacity: _opacityAnimation,
-              child: const SizedBox(
-                width: 28,
-                height: 28,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2.5,
-                  valueColor: AlwaysStoppedAnimation<Color>(AppColors.primaryLight),
-                ),
               ),
             ),
           ],
