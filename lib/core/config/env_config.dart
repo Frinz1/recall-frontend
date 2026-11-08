@@ -4,7 +4,7 @@ class EnvConfig {
 
   /// Change this to your deployed cloud URL (e.g. on Render.com or Railway.app)
   /// Example: 'https://recall-backend-production.up.railway.app/api/v1'
-  static const String productionApiUrl = 'https://recall-api.onrender.com/api/v1';
+  static const String productionApiUrl = 'https://recall-backend-one.vercel.app/api/v1';
 
   /// Android Emulator mapping for local development (10.0.2.2 routes to host localhost)
   static const String androidEmulatorApiUrl = 'http://10.0.2.2:5000/api/v1';
