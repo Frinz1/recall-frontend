@@ -9,6 +9,7 @@ class EmptyStateView extends StatelessWidget {
   final String description;
   final String? ctaLabel;
   final VoidCallback? onCtaPressed;
+  final String? imageAsset;
 
   const EmptyStateView({
     super.key,
@@ -17,42 +18,66 @@ class EmptyStateView extends StatelessWidget {
     required this.description,
     this.ctaLabel,
     this.onCtaPressed,
+    this.imageAsset = 'assets/images/empty_decks_3d.jpg',
   });
 
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32.0),
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(24.0),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              width: 72,
-              height: 72,
-              decoration: BoxDecoration(
-                color: AppColors.bgSurface2,
-                shape: BoxShape.circle,
-                border: Border.all(color: AppColors.borderSubtle, width: 1.5),
-              ),
-              child: Icon(icon, size: 36, color: AppColors.textSecondary),
-            ),
-            const SizedBox(height: 20),
+            if (imageAsset != null)
+              Container(
+                width: 116,
+                height: 116,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(
+                    color: AppColors.primary.withValues(alpha: 0.35),
+                    width: 1.5,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.35),
+                      blurRadius: 20,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(22),
+                  child: Image.asset(
+                    imageAsset!,
+                    width: 116,
+                    height: 116,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => _buildFallbackIcon(),
+                  ),
+                ),
+              )
+            else
+              _buildFallbackIcon(),
+            const SizedBox(height: 16),
             Text(
               title,
               style: AppTypography.titleLarge,
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
             Text(
               description,
               style: AppTypography.bodyMedium,
               textAlign: TextAlign.center,
             ),
             if (ctaLabel != null && onCtaPressed != null) ...[
-              const SizedBox(height: 24),
+              const SizedBox(height: 20),
               AppButton(
                 label: ctaLabel!,
+                icon: Icons.add_rounded,
                 onPressed: onCtaPressed,
                 variant: AppButtonVariant.primary,
               ),
@@ -60,6 +85,19 @@ class EmptyStateView extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildFallbackIcon() {
+    return Container(
+      width: 72,
+      height: 72,
+      decoration: BoxDecoration(
+        color: AppColors.bgSurface2,
+        shape: BoxShape.circle,
+        border: Border.all(color: AppColors.borderSubtle, width: 1.5),
+      ),
+      child: Icon(icon, size: 36, color: AppColors.textSecondary),
     );
   }
 }

@@ -97,7 +97,7 @@ class StudyRepository extends ChangeNotifier {
         if (decoded is List) {
           _subjects.addAll(
             decoded
-                .whereType<Map>()
+                .whereType<Map<dynamic, dynamic>>()
                 .map((s) => Subject.fromJson(Map<String, dynamic>.from(s))),
           );
         }
@@ -109,7 +109,7 @@ class StudyRepository extends ChangeNotifier {
         if (decoded is List) {
           _decks.addAll(
             decoded
-                .whereType<Map>()
+                .whereType<Map<dynamic, dynamic>>()
                 .map((d) => Deck.fromJson(Map<String, dynamic>.from(d))),
           );
         }
@@ -196,7 +196,7 @@ class StudyRepository extends ChangeNotifier {
 
       if (subjectsRes.success && subjectsRes.data is List) {
         final remoteSubjects = (subjectsRes.data as List)
-            .whereType<Map>()
+            .whereType<Map<dynamic, dynamic>>()
             .map((s) => Subject.fromJson(Map<String, dynamic>.from(s)))
             .toList();
         _subjects
@@ -205,7 +205,7 @@ class StudyRepository extends ChangeNotifier {
       }
 
       if (decksRes.success && decksRes.data is List) {
-        final rawList = (decksRes.data as List).whereType<Map>().toList();
+        final rawList = (decksRes.data as List).whereType<Map<dynamic, dynamic>>().toList();
         final loadedDecks = <Deck>[];
 
         for (final rawDeck in rawList) {

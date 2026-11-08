@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import '../../core/models/flashcard_model.dart';
+import '../../core/services/auth_service.dart';
 import '../../core/services/study_repository.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/widgets/app_button.dart';
+import '../../core/widgets/empty_state_view.dart';
+import '../../core/widgets/quick_create_sheet.dart';
 import '../../core/widgets/toast_feedback.dart';
 import '../deck/deck_detail_screen.dart';
 import '../study/study_session_screen.dart';
@@ -19,12 +22,28 @@ class DashboardScreen extends StatelessWidget {
     this.onNavigateToSettings,
   });
 
+  String _resolveGreeting() {
+    final hour = DateTime.now().hour;
+    if (hour < 12) return 'Good Morning';
+    if (hour < 17) return 'Good Afternoon';
+    return 'Good Evening';
+  }
+
+  String _resolveFirstName(UserProfile? user) {
+    if (user == null || user.name.trim().isEmpty) return 'Scholar';
+    return user.name.trim().split(RegExp(r'\s+')).first;
+  }
+
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
-      animation: StudyRepository.instance,
+      animation: Listenable.merge([StudyRepository.instance, AuthService.instance]),
       builder: (context, _) {
         final repo = StudyRepository.instance;
+        final user = AuthService.instance.currentUser;
+        final firstName = _resolveFirstName(user);
+        final greeting = _resolveGreeting();
+
         final totalDue = repo.totalDueCardsCount;
         final scheduledDue = repo.totalScheduledDueCount;
         final newCount = repo.totalNewCardsCount;
@@ -56,52 +75,78 @@ class DashboardScreen extends StatelessWidget {
             title: Row(
               children: [
                 Container(
-                  width: 32,
-                  height: 32,
+                  width: 36,
+                  height: 36,
                   decoration: BoxDecoration(
-                    color: AppColors.primary,
-                    borderRadius: BorderRadius.circular(8),
+                    gradient: const LinearGradient(
+                      colors: [AppColors.primaryLight, AppColors.primary],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.25),
+                      width: 1.5,
+                    ),
                   ),
-                  child: const Center(
-                    child: Icon(Icons.bolt_rounded, color: AppColors.bgCanvas, size: 20),
+                  child: Center(
+                    child: Text(
+                      firstName[0].toUpperCase(),
+                      style: AppTypography.titleMedium.copyWith(
+                        color: AppColors.textInverse,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
                   ),
                 ),
-                const SizedBox(width: 10),
-                const Text('Recall', style: AppTypography.displayMedium),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Recall Workspace',
+                        style: AppTypography.bodySmall.copyWith(
+                          fontSize: 11,
+                          color: AppColors.textMuted,
+                        ),
+                      ),
+                      Text(
+                        '$greeting, $firstName 👋',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTypography.titleLarge.copyWith(fontSize: 17),
+                      ),
+                    ],
+                  ),
+                ),
               ],
             ),
             actions: [
-              // Streak Pill
+              // Streak Flame Pill (Single clean status badge, no redundant Settings button)
               Container(
-                margin: const EdgeInsets.only(right: 8),
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                margin: const EdgeInsets.only(right: 20),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
                   color: AppColors.bgSurface2,
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: AppColors.borderSubtle),
+                  border: Border.all(color: AppColors.warning.withValues(alpha: 0.45)),
                 ),
                 child: Row(
                   children: [
                     const Icon(
                       Icons.local_fire_department_rounded,
-                      color: Colors.orange,
+                      color: AppColors.warning,
                       size: 17,
                     ),
                     const SizedBox(width: 4),
                     Text(
                       '${repo.studyStreakDays}d streak',
-                      style: AppTypography.badge.copyWith(color: Colors.orange),
+                      style: AppTypography.badge.copyWith(color: AppColors.warning),
                     ),
                   ],
                 ),
               ),
-              if (onNavigateToSettings != null)
-                IconButton(
-                  icon: const Icon(Icons.tune_rounded, size: 20),
-                  tooltip: 'Settings & Preferences',
-                  onPressed: onNavigateToSettings,
-                ),
-              const SizedBox(width: 8),
             ],
           ),
           body: RefreshIndicator(
@@ -110,13 +155,14 @@ class DashboardScreen extends StatelessWidget {
             onRefresh: () => repo.fetchAllFromCloud(),
             child: SingleChildScrollView(
               physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              padding: const EdgeInsets.fromLTRB(20, 14, 20, 28),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Daily Readiness Hero Banner
+                  // Upgraded Hero Card with 3D AI Mascot + 7-Day Capsule Calendar Strip
                   _buildHeroBanner(
                     context,
+                    repo: repo,
                     totalDue: totalDue,
                     scheduledDue: scheduledDue,
                     newCount: newCount,
@@ -172,147 +218,219 @@ class DashboardScreen extends StatelessWidget {
                     const SizedBox(height: 24),
                   ],
 
-                  // Subjects Section (Quick Create & Manage Subjects)
+                  // Subjects Section Header — Single Clean 'Manage →' Pill
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text('Subjects', style: AppTypography.titleLarge),
-                      Row(
-                        children: [
-                          TextButton.icon(
-                            onPressed: () => _openQuickCreateSubjectDialog(context),
-                            icon: const Icon(Icons.add_rounded, size: 18, color: AppColors.primary),
-                            label: const Text(
-                              'New Subject',
-                              style: TextStyle(
-                                color: AppColors.primary,
-                                fontWeight: FontWeight.w700,
+                      const Flexible(
+                        child: Text(
+                          'Subjects',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTypography.titleLarge,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      InkWell(
+                        borderRadius: BorderRadius.circular(20),
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute<void>(builder: (_) => const SubjectListScreen()),
+                          );
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: AppColors.bgSurface1,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: AppColors.borderSubtle),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                'Manage',
+                                style: AppTypography.badge.copyWith(
+                                  color: AppColors.primaryLight,
+                                  fontSize: 12,
+                                ),
                               ),
-                            ),
+                              const SizedBox(width: 4),
+                              const Icon(
+                                Icons.arrow_forward_rounded,
+                                size: 14,
+                                color: AppColors.primaryLight,
+                              ),
+                            ],
                           ),
-                          IconButton(
-                            icon: const Icon(
-                              Icons.folder_open_rounded,
-                              size: 18,
-                              color: AppColors.textSecondary,
-                            ),
-                            tooltip: 'Manage All Subjects',
-                            onPressed: () {
-                              Navigator.of(context).push(
-                                MaterialPageRoute<void>(builder: (_) => const SubjectListScreen()),
-                              );
-                            },
-                          ),
-                        ],
+                        ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 12),
 
                   if (subjects.isEmpty)
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: AppColors.bgCard,
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: AppColors.borderSubtle),
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 40,
-                            height: 40,
-                            decoration: BoxDecoration(
-                              color: AppColors.primary.withValues(alpha: 0.14),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: const Icon(
-                              Icons.category_outlined,
-                              color: AppColors.primary,
-                              size: 20,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          const Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text('No subjects yet', style: AppTypography.titleMedium),
-                                SizedBox(height: 2),
-                                Text(
-                                  'Create a subject category (e.g. Networking, Calculus) to organize your decks.',
-                                  style: AppTypography.bodySmall,
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          TextButton(
-                            onPressed: () => _openQuickCreateSubjectDialog(context),
-                            child: const Text(
-                              '+ Add',
-                              style: TextStyle(
+                    InkWell(
+                      borderRadius: BorderRadius.circular(18),
+                      onTap: () => QuickCreateSheet.show(context, initialTab: 1),
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: AppColors.bgSurface1,
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(color: AppColors.borderSubtle),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 44,
+                              height: 44,
+                              decoration: BoxDecoration(
+                                color: AppColors.primary.withValues(alpha: 0.14),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Icon(
+                                Icons.local_offer_outlined,
                                 color: AppColors.primary,
-                                fontWeight: FontWeight.w700,
+                                size: 22,
                               ),
                             ),
-                          ),
-                        ],
+                            const SizedBox(width: 14),
+                            const Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text('No subjects yet', style: AppTypography.titleMedium),
+                                  SizedBox(height: 2),
+                                  Text(
+                                    'Tap to create a color-blocked subject category (e.g. Networking, Calculus).',
+                                    style: AppTypography.bodySmall,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Container(
+                              width: 34,
+                              height: 34,
+                              decoration: BoxDecoration(
+                                color: AppColors.bgSurface2,
+                                shape: BoxShape.circle,
+                                border: Border.all(color: AppColors.borderSubtle),
+                              ),
+                              child: const Icon(
+                                Icons.north_east_rounded,
+                                size: 16,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     )
                   else
                     SizedBox(
-                      height: 44,
+                      height: 82,
                       child: ListView.separated(
                         scrollDirection: Axis.horizontal,
                         itemCount: subjects.length,
-                        separatorBuilder: (_, __) => const SizedBox(width: 8),
+                        separatorBuilder: (_, __) => const SizedBox(width: 12),
                         itemBuilder: (context, index) {
                           final sub = subjects[index];
-                          final count = decks.where((d) => d.subjectId == sub.id).length;
-                          final subColor = Color(sub.colorValue);
+                          final subDecks = decks.where((d) => d.subjectId == sub.id).toList();
+                          final count = subDecks.length;
+                          final cardCount = subDecks.fold(0, (s, d) => s + d.totalCards);
                           final subIcon = AppColors.resolveSubjectIcon(sub.name);
-                          return InkWell(
+                          final monogram = AppColors.getSubjectMonogram(sub.name);
+                          final accent = AppColors.resolveBentoAccent(sub.colorValue);
+
+                          return GestureDetector(
                             onTap: () {
                               Navigator.of(context).push(
                                 MaterialPageRoute<void>(builder: (_) => const SubjectListScreen()),
                               );
                             },
-                            borderRadius: BorderRadius.circular(14),
                             child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                              width: 196,
+                              padding: const EdgeInsets.all(14),
                               decoration: BoxDecoration(
-                                color: AppColors.bgCard,
-                                borderRadius: BorderRadius.circular(14),
+                                gradient: AppColors.resolveBentoGradient(sub.colorValue),
+                                borderRadius: BorderRadius.circular(20),
                                 border: Border.all(
-                                  color: subColor.withValues(alpha: 0.55),
+                                  color: accent.withValues(alpha: 0.4),
                                   width: 1.2,
                                 ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.25),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
                               ),
                               child: Row(
-                                mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  if (subIcon != null)
-                                    Icon(subIcon, size: 15, color: subColor)
-                                  else
-                                    Container(
-                                      width: 9,
-                                      height: 9,
-                                      decoration: BoxDecoration(
-                                        color: subColor,
-                                        shape: BoxShape.circle,
-                                      ),
+                                  Container(
+                                    width: 40,
+                                    height: 40,
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withValues(alpha: 0.16),
+                                      borderRadius: BorderRadius.circular(12),
                                     ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    sub.name,
-                                    style: AppTypography.labelMedium.copyWith(color: Colors.white),
+                                    child: Center(
+                                      child: subIcon != null
+                                          ? Icon(subIcon, size: 20, color: Colors.white)
+                                          : Text(
+                                              monogram,
+                                              style: AppTypography.titleMedium.copyWith(
+                                                color: Colors.white,
+                                                fontWeight: FontWeight.w800,
+                                                fontSize: 14,
+                                              ),
+                                            ),
+                                    ),
                                   ),
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    '($count)',
-                                    style: AppTypography.bodySmall.copyWith(fontSize: 11),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          sub.name,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: AppTypography.titleMedium.copyWith(
+                                            color: Colors.white,
+                                            fontSize: 14,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          '$count ${count == 1 ? 'deck' : 'decks'} • $cardCount cards',
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: AppTypography.bodySmall.copyWith(
+                                            color: Colors.white.withValues(alpha: 0.8),
+                                            fontSize: 11,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  Container(
+                                    width: 26,
+                                    height: 26,
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withValues(alpha: 0.16),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(
+                                      Icons.north_east_rounded,
+                                      size: 14,
+                                      color: Colors.white,
+                                    ),
                                   ),
                                 ],
                               ),
@@ -322,18 +440,44 @@ class DashboardScreen extends StatelessWidget {
                       ),
                     ),
 
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 26),
 
-                  // Active Decks Carousel / List Header
+                  // Active Decks Header
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text('Active Decks', style: AppTypography.titleLarge),
-                      TextButton(
-                        onPressed: onNavigateToDecks,
-                        child: const Text(
-                          'View All',
-                          style: TextStyle(color: AppColors.primaryLight),
+                      const Flexible(
+                        child: Text(
+                          'Active Decks',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTypography.titleLarge,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      InkWell(
+                        borderRadius: BorderRadius.circular(20),
+                        onTap: onNavigateToDecks,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                'View All',
+                                style: AppTypography.badge.copyWith(
+                                  color: AppColors.primaryLight,
+                                  fontSize: 12,
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              const Icon(
+                                Icons.arrow_forward_rounded,
+                                size: 14,
+                                color: AppColors.primaryLight,
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ],
@@ -343,113 +487,20 @@ class DashboardScreen extends StatelessWidget {
                   if (decks.isEmpty)
                     Container(
                       width: double.infinity,
-                      padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
-                        color: AppColors.bgCard,
-                        borderRadius: BorderRadius.circular(16),
+                        color: AppColors.bgSurface1,
+                        borderRadius: BorderRadius.circular(22),
                         border: Border.all(color: AppColors.borderSubtle),
                       ),
-                      child: Column(
-                        children: [
-                          const Icon(
-                            Icons.style_outlined,
-                            color: AppColors.textMuted,
-                            size: 32,
-                          ),
-                          const SizedBox(height: 10),
-                          const Text('No Flashcard Decks Yet', style: AppTypography.titleMedium),
-                          const SizedBox(height: 4),
-                          const Text(
-                            'Create your first deck in the Decks tab to start studying with SM-2 spaced repetition.',
-                            textAlign: TextAlign.center,
-                            style: AppTypography.bodySmall,
-                          ),
-                          const SizedBox(height: 14),
-                          AppButton(
-                            label: 'Create Your First Deck',
-                            icon: Icons.add_rounded,
-                            onPressed: onNavigateToDecks,
-                          ),
-                        ],
+                      child: const EmptyStateView(
+                        icon: Icons.style_outlined,
+                        title: 'No Flashcard Decks Yet',
+                        description:
+                            'Tap the center + button in the bottom dock to create your first subject or flashcard deck.',
                       ),
                     )
                   else
-                    ...decks.take(4).map((deck) {
-                      final subtitleParts = <String>['${deck.totalCards} cards'];
-                      if (deck.newCardsCount > 0) {
-                        subtitleParts.add('${deck.newCardsCount} new');
-                      }
-                      if (deck.scheduledDueCount > 0) {
-                        subtitleParts.add('${deck.scheduledDueCount} due today');
-                      }
-
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(
-                            color: deck.isFavorite
-                                ? Colors.amber.withValues(alpha: 0.45)
-                                : AppColors.borderSubtle,
-                          ),
-                        ),
-                        child: Material(
-                          color: AppColors.bgCard,
-                          borderRadius: BorderRadius.circular(14),
-                          clipBehavior: Clip.antiAlias,
-                          child: ListTile(
-                            contentPadding:
-                                const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                            leading: Container(
-                              width: 42,
-                              height: 42,
-                              decoration: BoxDecoration(
-                                color: Color(deck.colorValue).withValues(alpha: 0.15),
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(
-                                  color: Color(deck.colorValue).withValues(alpha: 0.5),
-                                ),
-                              ),
-                              child: Icon(Icons.style_rounded, color: Color(deck.colorValue)),
-                            ),
-                            title: Row(
-                              children: [
-                                Flexible(
-                                  child: Text(
-                                    deck.title,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: AppTypography.titleMedium.copyWith(fontSize: 15),
-                                  ),
-                                ),
-                                if (deck.isFavorite) ...[
-                                  const SizedBox(width: 6),
-                                  const Icon(Icons.star_rounded, size: 15, color: Colors.amber),
-                                ],
-                              ],
-                            ),
-                            subtitle: Padding(
-                              padding: const EdgeInsets.only(top: 4),
-                              child: Text(
-                                subtitleParts.join(' • '),
-                                style: AppTypography.bodySmall,
-                              ),
-                            ),
-                            trailing: const Icon(
-                              Icons.chevron_right_rounded,
-                              color: AppColors.textMuted,
-                            ),
-                            onTap: () {
-                              Navigator.of(context).push(
-                                MaterialPageRoute<void>(
-                                  builder: (_) => DeckDetailScreen(deckId: deck.id),
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                      );
-                    }),
+                    ...decks.take(4).map((deck) => _buildBentoDeckCard(context, deck)),
                 ],
               ),
             ),
@@ -461,6 +512,7 @@ class DashboardScreen extends StatelessWidget {
 
   Widget _buildHeroBanner(
     BuildContext context, {
+    required StudyRepository repo,
     required int totalDue,
     required int scheduledDue,
     required int newCount,
@@ -476,20 +528,20 @@ class DashboardScreen extends StatelessWidget {
     if (hasNoDecks) {
       headline = 'Ready to Start Studying?';
       subtext =
-          'Your workspace is clean (0 decks). Create a Subject and Flashcard Deck to begin your spaced repetition schedule.';
+          'Create a Subject and Flashcard Deck to begin your SM-2 spaced repetition schedule.';
     } else if (scheduledDue > 0) {
       headline = '$scheduledDue Cards Due Today';
       subtext = newCount > 0
-          ? 'Plus $newCount new cards ready to learn ($reviewedToday / $dailyGoal daily goal completed).'
-          : 'Complete your scheduled SM-2 reviews today to extend your memory intervals.';
+          ? 'Plus $newCount new cards ready ($reviewedToday / $dailyGoal daily goal).'
+          : 'Complete your scheduled SM-2 reviews today to extend retention.';
     } else if (newCount > 0 && totalDue > 0) {
-      headline = '$newCount New Cards Ready to Learn';
+      headline = '$newCount New Cards Ready';
       subtext =
-          'Start your first study pass on these new flashcards to schedule their SM-2 intervals.';
+          'Start your first study pass on these flashcards to schedule SM-2 intervals.';
     } else {
-      headline = 'All Caught Up For Today!';
+      headline = 'All Caught Up Today!';
       subtext =
-          'You have completed $reviewedToday reviews today. Explore your decks or test yourself with a quiz.';
+          'You completed $reviewedToday reviews today. Explore your library or take a quiz.';
     }
 
     return Container(
@@ -497,17 +549,17 @@ class DashboardScreen extends StatelessWidget {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [Color(0xFF1E1B4B), Color(0xFF312E81)],
+          colors: [AppColors.heroSurfaceStart, AppColors.heroSurfaceEnd],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.primary.withValues(alpha: 0.4)),
+        borderRadius: BorderRadius.circular(26),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.42), width: 1.2),
         boxShadow: [
           BoxShadow(
-            color: AppColors.primary.withValues(alpha: 0.2),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
+            color: Colors.black.withValues(alpha: 0.38),
+            blurRadius: 24,
+            offset: const Offset(0, 10),
           ),
         ],
       ),
@@ -515,53 +567,132 @@ class DashboardScreen extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: AppColors.primary,
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text(
-                  'DAILY SM-2 SCHEDULE',
-                  style: AppTypography.badge.copyWith(
-                    fontSize: 10,
-                    color: AppColors.bgCanvas,
-                  ),
+              // Left Column: Status Pill, Bold Headline, Subtitle
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        'DAILY SM-2 SCHEDULE',
+                        style: AppTypography.badge.copyWith(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.bgCanvas,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      headline,
+                      style: AppTypography.displayMedium.copyWith(
+                        fontSize: 22,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      subtext,
+                      style: AppTypography.bodySmall.copyWith(
+                        color: AppColors.heroTextMuted,
+                        fontSize: 13,
+                        height: 1.4,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              Text(
-                'Daily Goal: $reviewedToday / $dailyGoal',
-                style: AppTypography.badge.copyWith(
-                  fontSize: 11,
-                  color: const Color(0xFFC7D2FE),
+              const SizedBox(width: 14),
+              // Right Column: 3D AI Study Robot Mascot
+              Container(
+                width: 96,
+                height: 96,
+                decoration: BoxDecoration(
+                  color: AppColors.heroSurfaceStart,
+                  borderRadius: BorderRadius.circular(22),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.18),
+                    width: 1.5,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.35),
+                      blurRadius: 14,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(20),
+                  child: Image.asset(
+                    'assets/images/hero_mascot.jpg',
+                    width: 96,
+                    height: 96,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => const Center(
+                      child: Icon(
+                        Icons.smart_toy_rounded,
+                        color: AppColors.primary,
+                        size: 42,
+                      ),
+                    ),
+                  ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          Text(
-            headline,
-            style: AppTypography.displayMedium.copyWith(fontSize: 22),
+          const SizedBox(height: 16),
+
+          // Daily Goal Progress Row
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Flexible(
+                child: Text(
+                  'Daily Goal Progress',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTypography.badge.copyWith(
+                    fontSize: 11,
+                    color: AppColors.heroTextMuted,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                '$reviewedToday / $dailyGoal cards',
+                style: AppTypography.badge.copyWith(
+                  fontSize: 11,
+                  color: AppColors.primaryLight,
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 6),
-          Text(
-            subtext,
-            style: AppTypography.bodyMedium.copyWith(color: const Color(0xFFC7D2FE)),
-          ),
-          const SizedBox(height: 14),
           ClipRRect(
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.circular(6),
             child: LinearProgressIndicator(
               value: goalProgress,
-              minHeight: 6,
-              backgroundColor: Colors.black.withValues(alpha: 0.28),
+              minHeight: 7,
+              backgroundColor: Colors.black.withValues(alpha: 0.32),
               valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
             ),
           ),
+
+          const SizedBox(height: 18),
+
+          // 7-Day Capsule Calendar Strip (Mon..Sun vertical pills)
+          _buildSevenDayCapsuleStrip(repo),
+
           if (totalDue > 0 && priorityDeck != null) ...[
-            const SizedBox(height: 16),
+            const SizedBox(height: 18),
             AppButton(
               label: 'Start Smart Review (${priorityDeck.title})',
               icon: Icons.play_arrow_rounded,
@@ -578,12 +709,12 @@ class DashboardScreen extends StatelessWidget {
               },
             ),
           ] else if (hasNoDecks) ...[
-            const SizedBox(height: 16),
+            const SizedBox(height: 18),
             AppButton(
               label: 'Create First Subject & Deck',
               icon: Icons.add_circle_outline_rounded,
               isExpanded: true,
-              onPressed: onNavigateToDecks,
+              onPressed: () => QuickCreateSheet.show(context, initialTab: 0),
             ),
           ],
         ],
@@ -591,107 +722,340 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
-  void _openQuickCreateSubjectDialog(BuildContext context) {
-    final nameCtrl = TextEditingController();
-    int selectedColor = 0xFF6366F1;
-    final colorOptions = [
-      0xFF6366F1,
-      0xFF3B82F6,
-      0xFF10B981,
-      0xFFA855F7,
-      0xFFF59E0B,
-      0xFFEF4444,
-      0xFF06B6D4,
-    ];
+  Widget _buildSevenDayCapsuleStrip(StudyRepository repo) {
+    const dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    final now = DateTime.now();
+    final currentWeekdayIndex = now.weekday - 1; // 0 = Mon .. 6 = Sun
+    final startOfWeek = DateTime(now.year, now.month, now.day)
+        .subtract(Duration(days: currentWeekdayIndex));
 
-    showDialog<void>(
-      context: context,
-      builder: (ctx) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return AlertDialog(
-              backgroundColor: AppColors.bgSurface1,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-                side: const BorderSide(color: AppColors.borderSubtle),
-              ),
-              title: const Text('Create New Subject', style: AppTypography.titleLarge),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  TextField(
-                    controller: nameCtrl,
-                    autofocus: true,
-                    style: AppTypography.bodyMedium.copyWith(color: Colors.white),
-                    decoration: InputDecoration(
-                      labelText: 'Subject Name',
-                      hintText: 'e.g. Cybersecurity, Operating Systems',
-                      filled: true,
-                      fillColor: AppColors.bgSurface2,
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+    String dateKey(DateTime d) => '${d.year}-${d.month}-${d.day}';
+    final activeDates = <String>{};
+
+    for (final log in repo.reviewLogs) {
+      activeDates.add(dateKey(log.timestamp));
+    }
+    for (final c in repo.allCards) {
+      if (c.lastReviewedDate != null) {
+        activeDates.add(dateKey(c.lastReviewedDate!));
+      }
+    }
+    if (repo.studyStreakDays > 0 && activeDates.isEmpty) {
+      for (int s = 0; s < repo.studyStreakDays.clamp(0, 7); s++) {
+        activeDates.add(dateKey(now.subtract(Duration(days: s))));
+      }
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.24),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
+      ),
+      child: Row(
+        children: List.generate(7, (index) {
+          final date = startOfWeek.add(Duration(days: index));
+          final isToday = index == currentWeekdayIndex;
+          final isActive = activeDates.contains(dateKey(date));
+
+          return Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 2),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                decoration: BoxDecoration(
+                  color: isToday
+                      ? AppColors.primary
+                      : (isActive
+                          ? Colors.white.withValues(alpha: 0.14)
+                          : Colors.transparent),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: isToday
+                        ? AppColors.primaryLight
+                        : (isActive
+                            ? AppColors.primary.withValues(alpha: 0.5)
+                            : Colors.white.withValues(alpha: 0.08)),
+                    width: isToday ? 1.5 : 1.0,
+                  ),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      dayLabels[index],
+                      maxLines: 1,
+                      overflow: TextOverflow.clip,
+                      style: AppTypography.badge.copyWith(
+                        fontSize: 10,
+                        color: isToday
+                            ? AppColors.textInverse
+                            : AppColors.heroTextMuted,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 18),
-                  const Text('Theme Color', style: AppTypography.labelMedium),
-                  const SizedBox(height: 10),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: colorOptions.map((c) {
-                      final isSelected = selectedColor == c;
-                      return GestureDetector(
-                        onTap: () => setDialogState(() => selectedColor = c),
-                        child: Container(
-                          width: 32,
-                          height: 32,
-                          decoration: BoxDecoration(
-                            color: Color(c),
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: isSelected ? Colors.white : Colors.transparent,
-                              width: 2.5,
-                            ),
-                          ),
-                          child: isSelected
-                              ? const Center(
-                                  child: Icon(Icons.check, size: 16, color: Colors.white),
-                                )
-                              : null,
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                ],
+                    const SizedBox(height: 4),
+                    Text(
+                      '${date.day}',
+                      style: AppTypography.titleMedium.copyWith(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                        color: isToday ? AppColors.textInverse : Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Container(
+                      width: 5,
+                      height: 5,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: isToday
+                            ? AppColors.textInverse
+                            : (isActive ? AppColors.primary : Colors.transparent),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(ctx).pop(),
-                  child: const Text('Cancel'),
-                ),
-                AppButton(
-                  label: 'Create Subject',
-                  onPressed: () async {
-                    final name = nameCtrl.text.trim();
-                    if (name.isEmpty) {
-                      ToastFeedback.showError(context, 'Please enter a subject name.');
-                      return;
-                    }
-                    Navigator.of(ctx).pop();
-                    await StudyRepository.instance.addSubject(
-                      name: name,
-                      colorValue: selectedColor,
-                    );
-                    if (context.mounted) {
-                      ToastFeedback.showSuccess(context, 'Subject "$name" saved to cloud!');
-                    }
-                  },
-                ),
-              ],
+            ),
+          );
+        }),
+      ),
+    );
+  }
+
+  Widget _buildBentoDeckCard(BuildContext context, Deck deck) {
+    final accent = AppColors.resolveBentoAccent(deck.colorValue);
+    final masteryPct = deck.masteryPercentage.round();
+    final progressValue = deck.cards.isEmpty ? 0.0 : (deck.masteredCount / deck.cards.length);
+
+    String statusLabel;
+    if (deck.scheduledDueCount > 0) {
+      statusLabel = '${deck.scheduledDueCount} due today';
+    } else if (deck.newCardsCount > 0) {
+      statusLabel = '${deck.newCardsCount} new';
+    } else if (deck.totalCards == 0) {
+      statusLabel = '0 cards • New deck';
+    } else {
+      statusLabel = 'All caught up';
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      decoration: BoxDecoration(
+        gradient: AppColors.resolveBentoGradient(deck.colorValue),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: deck.isFavorite
+              ? AppColors.primaryLight.withValues(alpha: 0.8)
+              : accent.withValues(alpha: 0.4),
+          width: 1.3,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.28),
+            blurRadius: 14,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(24),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(24),
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => DeckDetailScreen(deckId: deck.id),
+              ),
             );
           },
-        );
-      },
+          child: Padding(
+            padding: const EdgeInsets.all(18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Top Row: Status Pill (Left) + Star, Edit & Circular Arrow Button (Right)
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Flexible(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.28),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 7,
+                              height: 7,
+                              decoration: BoxDecoration(
+                                color: deck.scheduledDueCount > 0
+                                    ? AppColors.primaryLight
+                                    : accent,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Flexible(
+                              child: Text(
+                                statusLabel,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: AppTypography.badge.copyWith(
+                                  color: Colors.white,
+                                  fontSize: 11,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        GestureDetector(
+                          onTap: () {
+                            final next = !deck.isFavorite;
+                            StudyRepository.instance.toggleFavoriteDeck(deck.id);
+                            if (next) {
+                              ToastFeedback.showSuccess(
+                                context,
+                                '"${deck.title}" pinned to top of decks!',
+                              );
+                            } else {
+                              ToastFeedback.showInfo(
+                                context,
+                                '"${deck.title}" unpinned.',
+                              );
+                            }
+                          },
+                          child: Container(
+                            width: 34,
+                            height: 34,
+                            margin: const EdgeInsets.only(right: 6),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.25),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              deck.isFavorite ? Icons.star_rounded : Icons.star_outline_rounded,
+                              size: 17,
+                              color: deck.isFavorite ? AppColors.primaryLight : Colors.white70,
+                            ),
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: () => QuickCreateSheet.show(context, existingDeck: deck),
+                          child: Container(
+                            width: 34,
+                            height: 34,
+                            margin: const EdgeInsets.only(right: 6),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.25),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.edit_outlined,
+                              size: 16,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                        Container(
+                          width: 34,
+                          height: 34,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.20),
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.28),
+                            ),
+                          ),
+                          child: const Icon(
+                            Icons.north_east_rounded,
+                            size: 17,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  deck.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTypography.titleLarge.copyWith(
+                    color: Colors.white,
+                    fontSize: 19,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  deck.description.isNotEmpty
+                      ? deck.description
+                      : '${deck.totalCards} flashcards • ${deck.masteredCount} mastered',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTypography.bodySmall.copyWith(
+                    color: Colors.white.withValues(alpha: 0.82),
+                    fontSize: 12,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        'Progress • $masteryPct%',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTypography.badge.copyWith(
+                          color: Colors.white.withValues(alpha: 0.92),
+                          fontSize: 11,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Text(
+                        '${deck.masteredCount}/${deck.totalCards} mastered',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTypography.bodySmall.copyWith(
+                          color: Colors.white.withValues(alpha: 0.78),
+                          fontSize: 11,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 7),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: LinearProgressIndicator(
+                    value: progressValue,
+                    minHeight: 8,
+                    backgroundColor: Colors.black.withValues(alpha: 0.28),
+                    valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 
@@ -705,7 +1069,7 @@ class DashboardScreen extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
       decoration: BoxDecoration(
         color: AppColors.bgCard,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppColors.borderSubtle),
       ),
       child: Column(
@@ -725,8 +1089,8 @@ class DashboardScreen extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF3F1119),
-        borderRadius: BorderRadius.circular(14),
+        color: AppColors.dangerSurface.withValues(alpha: 0.55),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppColors.danger.withValues(alpha: 0.5)),
       ),
       child: Row(
@@ -737,12 +1101,14 @@ class DashboardScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Weakness Radar Alert',
-                    style: AppTypography.titleMedium.copyWith(color: Colors.white, fontSize: 14)),
+                Text(
+                  'Weakness Radar Alert',
+                  style: AppTypography.titleMedium.copyWith(color: Colors.white, fontSize: 14),
+                ),
                 const SizedBox(height: 2),
                 Text(
-                  '$count concepts have high failure rates. Check Learning Analytics to drill them.',
-                  style: AppTypography.bodySmall.copyWith(color: const Color(0xFFFECDD3)),
+                  '$count concepts have high failure rates. Check Stats to drill them.',
+                  style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary),
                 ),
               ],
             ),

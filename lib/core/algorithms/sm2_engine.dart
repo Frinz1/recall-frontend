@@ -1,5 +1,5 @@
-/// Scientific SuperMemo-2 (SM-2) Spaced Repetition Algorithm Implementation.
-/// Used to calculate optimal memory retention intervals based on user recall quality.
+// Scientific SuperMemo-2 (SM-2) Spaced Repetition Algorithm Implementation.
+// Used to calculate optimal memory retention intervals based on user recall quality.
 
 enum RecallRating {
   again(1, 'Again', 'Forgot / Blank'),

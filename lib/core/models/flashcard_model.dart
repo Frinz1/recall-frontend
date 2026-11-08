@@ -221,7 +221,7 @@ class Deck {
     final rawCards = json['cards'];
     final parsedCards = rawCards is List
         ? rawCards
-            .whereType<Map>()
+            .whereType<Map<dynamic, dynamic>>()
             .map((c) => Flashcard.fromJson(Map<String, dynamic>.from(c)))
             .toList()
         : <Flashcard>[];

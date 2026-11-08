@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../network/api_client.dart';
@@ -353,7 +352,7 @@ class AuthService extends ChangeNotifier {
       'email': googleEmail,
       'name': googleName,
       'mode': isLogin ? 'login' : 'register',
-      if (googleId != null) 'googleId': googleId,
+      'googleId': googleId,
     });
 
     _isLoading = false;

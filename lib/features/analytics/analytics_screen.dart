@@ -72,16 +72,19 @@ class AnalyticsScreen extends StatelessWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('Weakness Radar', style: AppTypography.titleMedium),
-                          Text(
-                            'Cards where recall failure rate is ≥ 40%',
-                            style: AppTypography.bodySmall.copyWith(color: AppColors.textMuted),
-                          ),
-                        ],
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('Weakness Radar', style: AppTypography.titleMedium),
+                            Text(
+                              'Cards where recall failure rate is ≥ 40%',
+                              style: AppTypography.bodySmall.copyWith(color: AppColors.textMuted),
+                            ),
+                          ],
+                        ),
                       ),
+                      const SizedBox(width: 8),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
@@ -260,8 +263,17 @@ class AnalyticsScreen extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Weekly Study Consistency', style: AppTypography.titleMedium),
+              const Flexible(
+                child: Text(
+                  'Weekly Study Consistency',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTypography.titleMedium,
+                ),
+              ),
+              const SizedBox(width: 8),
               Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   const Icon(Icons.local_fire_department_rounded, color: Colors.orange, size: 18),
                   const SizedBox(width: 4),
@@ -275,49 +287,54 @@ class AnalyticsScreen extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: List.generate(7, (i) {
               final dayDate = startOfWeek.add(Duration(days: i));
               final isCompleted = activeDates.contains(dateKey(dayDate));
               final isToday = i == currentWeekdayIndex;
 
-              return Column(
-                children: [
-                  Container(
-                    width: 38,
-                    height: 38,
-                    decoration: BoxDecoration(
-                      color: isCompleted ? AppColors.primary : AppColors.bgSurface2,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(
-                        color: isCompleted
-                            ? AppColors.primaryLight
-                            : (isToday ? AppColors.accentCyan : AppColors.borderSubtle),
-                        width: isToday ? 1.8 : 1.0,
+              return Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 2),
+                  child: Column(
+                    children: [
+                      Container(
+                        height: 38,
+                        decoration: BoxDecoration(
+                          color: isCompleted ? AppColors.primary : AppColors.bgSurface2,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: isCompleted
+                                ? AppColors.primaryLight
+                                : (isToday ? AppColors.accentCyan : AppColors.borderSubtle),
+                            width: isToday ? 1.8 : 1.0,
+                          ),
+                        ),
+                        child: Center(
+                          child: Icon(
+                            isCompleted
+                                ? Icons.check_rounded
+                                : (isToday ? Icons.circle_outlined : Icons.remove_rounded),
+                            size: isCompleted ? 20 : 14,
+                            color: isCompleted
+                                ? AppColors.textInverse
+                                : (isToday ? AppColors.accentCyan : AppColors.textMuted),
+                          ),
+                        ),
                       ),
-                    ),
-                    child: Center(
-                      child: Icon(
-                        isCompleted
-                            ? Icons.check_rounded
-                            : (isToday ? Icons.circle_outlined : Icons.remove_rounded),
-                        size: isCompleted ? 20 : 14,
-                        color: isCompleted
-                            ? AppColors.textInverse
-                            : (isToday ? AppColors.accentCyan : AppColors.textMuted),
+                      const SizedBox(height: 6),
+                      Text(
+                        days[i],
+                        maxLines: 1,
+                        overflow: TextOverflow.clip,
+                        style: AppTypography.bodySmall.copyWith(
+                          fontSize: 11,
+                          fontWeight: isToday ? FontWeight.w800 : FontWeight.w500,
+                          color: isToday ? AppColors.accentCyan : AppColors.textMuted,
+                        ),
                       ),
-                    ),
+                    ],
                   ),
-                  const SizedBox(height: 6),
-                  Text(
-                    days[i],
-                    style: AppTypography.bodySmall.copyWith(
-                      fontSize: 11,
-                      fontWeight: isToday ? FontWeight.w800 : FontWeight.w500,
-                      color: isToday ? AppColors.accentCyan : AppColors.textMuted,
-                    ),
-                  ),
-                ],
+                ),
               );
             }),
           ),
@@ -367,7 +384,15 @@ class AnalyticsScreen extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(label, style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary)),
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary),
+              ),
+            ),
+            const SizedBox(width: 8),
             Text('$count cards', style: AppTypography.badge.copyWith(color: color)),
           ],
         ),

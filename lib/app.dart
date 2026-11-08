@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'core/services/auth_service.dart';
 import 'core/theme/app_colors.dart';
 import 'core/theme/app_theme.dart';
+import 'core/theme/app_typography.dart';
+import 'core/widgets/quick_create_sheet.dart';
 import 'features/analytics/analytics_screen.dart';
 import 'features/auth/auth_screen.dart';
 import 'features/dashboard/dashboard_screen.dart';
@@ -22,6 +24,7 @@ class RecallApp extends StatefulWidget {
 
 class _RecallAppState extends State<RecallApp> {
   AppFlowState _flow = AppFlowState.splash;
+  Timer? _splashTimer;
 
   @override
   void initState() {
@@ -31,9 +34,16 @@ class _RecallAppState extends State<RecallApp> {
   }
 
   Future<void> _bootApp() async {
+    final splashCompleter = Completer<void>();
+    _splashTimer = Timer(const Duration(milliseconds: 3800), () {
+      if (!splashCompleter.isCompleted) {
+        splashCompleter.complete();
+      }
+    });
+
     await Future.wait([
       AuthService.instance.initializeSession(),
-      Future<void>.delayed(const Duration(milliseconds: 3800)),
+      splashCompleter.future,
     ]);
 
     if (!mounted) return;
@@ -62,6 +72,7 @@ class _RecallAppState extends State<RecallApp> {
 
   @override
   void dispose() {
+    _splashTimer?.cancel();
     AuthService.instance.removeListener(_handleAuthChange);
     super.dispose();
   }
@@ -82,7 +93,7 @@ class _RecallAppState extends State<RecallApp> {
             const clampedWidth = 480.0;
             final mediaQuery = MediaQuery.of(context);
             return Container(
-              color: const Color(0xFF090A0D),
+              color: AppColors.bgCanvas,
               alignment: Alignment.center,
               child: Container(
                 width: clampedWidth,
@@ -168,37 +179,279 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
         index: _currentIndex,
         children: screens,
       ),
-      bottomNavigationBar: Container(
-        decoration: const BoxDecoration(
-          border: Border(top: BorderSide(color: AppColors.borderSubtle, width: 1)),
-        ),
-        child: BottomNavigationBar(
-          currentIndex: _currentIndex,
-          onTap: (index) => setState(() => _currentIndex = index),
-          items: const [
-            BottomNavigationBarItem(
-              icon: Icon(Icons.space_dashboard_outlined),
-              activeIcon: Icon(Icons.space_dashboard_rounded),
-              label: 'Dashboard',
+      bottomNavigationBar: _SculptedAnchoredDock(
+        currentIndex: _currentIndex,
+        onTabSelected: (index) => setState(() => _currentIndex = index),
+        onCenterCreatePressed: () {
+          QuickCreateSheet.show(
+            context,
+            initialTab: _currentIndex == 1 ? 0 : 0,
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _SculptedAnchoredDock extends StatelessWidget {
+  final int currentIndex;
+  final ValueChanged<int> onTabSelected;
+  final VoidCallback onCenterCreatePressed;
+
+  const _SculptedAnchoredDock({
+    required this.currentIndex,
+    required this.onTabSelected,
+    required this.onCenterCreatePressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
+    const dockBarHeight = 70.0;
+    const archOverhang = 14.0;
+    final totalHeight = dockBarHeight + archOverhang + bottomPadding;
+
+    return SizedBox(
+      height: totalHeight,
+      width: double.infinity,
+      child: Stack(
+        alignment: Alignment.topCenter,
+        clipBehavior: Clip.none,
+        children: [
+          // Full-width Anchored Sculpted Surface with 28px curved top corners + center cradle arch
+          const Positioned.fill(
+            child: CustomPaint(
+              painter: _SculptedDockPainter(archOverhang: archOverhang),
             ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.style_outlined),
-              activeIcon: Icon(Icons.style_rounded),
-              label: 'Decks',
+          ),
+
+          // Navigation Tab Row anchored inside the dock
+          Positioned(
+            top: archOverhang,
+            left: 8,
+            right: 8,
+            bottom: bottomPadding,
+            child: Row(
+              children: [
+                Expanded(
+                  child: _buildDockTabItem(
+                    index: 0,
+                    icon: Icons.home_rounded,
+                    label: 'Home',
+                  ),
+                ),
+                Expanded(
+                  child: _buildDockTabItem(
+                    index: 1,
+                    icon: Icons.style_rounded,
+                    label: 'Decks',
+                  ),
+                ),
+                const SizedBox(width: 76), // Space for Center Action Cradle
+                Expanded(
+                  child: _buildDockTabItem(
+                    index: 2,
+                    icon: Icons.insights_rounded,
+                    label: 'Stats',
+                  ),
+                ),
+                Expanded(
+                  child: _buildDockTabItem(
+                    index: 3,
+                    icon: Icons.settings_rounded,
+                    label: 'Settings',
+                  ),
+                ),
+              ],
             ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.insights_rounded),
-              activeIcon: Icon(Icons.insights_rounded),
-              label: 'Analytics',
+          ),
+
+          // Center Raised 56x56 Action Cradle Button
+          Positioned(
+            top: 2,
+            child: GestureDetector(
+              onTap: onCenterCreatePressed,
+              child: Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: const LinearGradient(
+                    colors: [AppColors.cradleStart, AppColors.cradleEnd],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.28),
+                    width: 2,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.cradleStart.withValues(alpha: 0.45),
+                      blurRadius: 16,
+                      offset: const Offset(0, 6),
+                    ),
+                    BoxShadow(
+                      color: AppColors.cradleEnd.withValues(alpha: 0.25),
+                      blurRadius: 24,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: const Center(
+                  child: Icon(
+                    Icons.add_rounded,
+                    color: Colors.white,
+                    size: 30,
+                  ),
+                ),
+              ),
             ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.settings_outlined),
-              activeIcon: Icon(Icons.settings_rounded),
-              label: 'Settings',
-            ),
-          ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDockTabItem({
+    required int index,
+    required IconData icon,
+    required String label,
+  }) {
+    final isSelected = currentIndex == index;
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => onTabSelected(index),
+      child: Center(
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOutCubic,
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? AppColors.primary.withValues(alpha: 0.16)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(18),
+            border: isSelected
+                ? Border.all(color: AppColors.primary.withValues(alpha: 0.35), width: 1)
+                : null,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                icon,
+                size: 22,
+                color: isSelected ? AppColors.primary : AppColors.textMuted,
+              ),
+              const SizedBox(height: 3),
+              Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppTypography.badge.copyWith(
+                  fontSize: 11,
+                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                  color: isSelected ? AppColors.primary : AppColors.textMuted,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 }
+
+class _SculptedDockPainter extends CustomPainter {
+  final double archOverhang;
+
+  const _SculptedDockPainter({required this.archOverhang});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = size.width;
+    final h = size.height;
+    final topY = archOverhang;
+    const cornerRadius = 28.0;
+    final centerX = w / 2;
+    const cradleHalfWidth = 44.0;
+
+    final path = Path()
+      ..moveTo(0, h)
+      ..lineTo(0, topY + cornerRadius)
+      ..quadraticBezierTo(0, topY, cornerRadius, topY)
+      ..lineTo(centerX - cradleHalfWidth, topY)
+      // Smooth sculpted raised cradle arch in the center
+      ..cubicTo(
+        centerX - 26,
+        topY,
+        centerX - 24,
+        0,
+        centerX,
+        0,
+      )
+      ..cubicTo(
+        centerX + 24,
+        0,
+        centerX + 26,
+        topY,
+        centerX + cradleHalfWidth,
+        topY,
+      )
+      ..lineTo(w - cornerRadius, topY)
+      ..quadraticBezierTo(w, topY, w, topY + cornerRadius)
+      ..lineTo(w, h)
+      ..close();
+
+    // Deep upward shadow
+    final shadowPaint = Paint()
+      ..color = Colors.black.withValues(alpha: 0.48)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 18);
+    canvas.save();
+    canvas.translate(0, -4);
+    canvas.drawPath(path, shadowPaint);
+    canvas.restore();
+
+    // Main Dock Fill
+    final fillPaint = Paint()
+      ..color = AppColors.bgSurface1
+      ..style = PaintingStyle.fill;
+    canvas.drawPath(path, fillPaint);
+
+    // Top Border Glow along the sculpted silhouette
+    final borderPath = Path()
+      ..moveTo(0, topY + cornerRadius)
+      ..quadraticBezierTo(0, topY, cornerRadius, topY)
+      ..lineTo(centerX - cradleHalfWidth, topY)
+      ..cubicTo(
+        centerX - 26,
+        topY,
+        centerX - 24,
+        0,
+        centerX,
+        0,
+      )
+      ..cubicTo(
+        centerX + 24,
+        0,
+        centerX + 26,
+        topY,
+        centerX + cradleHalfWidth,
+        topY,
+      )
+      ..lineTo(w - cornerRadius, topY)
+      ..quadraticBezierTo(w, topY, w, topY + cornerRadius);
+
+    final borderPaint = Paint()
+      ..color = AppColors.borderSubtle
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.4;
+    canvas.drawPath(borderPath, borderPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _SculptedDockPainter oldDelegate) =>
+      oldDelegate.archOverhang != archOverhang;
+}
+
