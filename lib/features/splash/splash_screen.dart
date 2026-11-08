@@ -39,19 +39,11 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
 
     if (AuthService.instance.isAuthenticated) {
       Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => widget.nextScreen),
+        MaterialPageRoute<void>(builder: (_) => widget.nextScreen),
       );
     } else {
       Navigator.of(context).pushReplacement(
-        MaterialPageRoute(
-          builder: (_) => OnboardingScreen(
-            onComplete: () {
-              Navigator.of(context).pushReplacement(
-                MaterialPageRoute(builder: (_) => const AuthScreen()),
-              );
-            },
-          ),
-        ),
+        MaterialPageRoute<void>(builder: (_) => const OnboardingScreen()),
       );
     }
   }

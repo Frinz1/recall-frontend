@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/widgets/app_button.dart';
+import '../auth/auth_screen.dart';
 
 class OnboardingSlideData {
   final IconData icon;
@@ -20,9 +21,9 @@ class OnboardingSlideData {
 }
 
 class OnboardingScreen extends StatefulWidget {
-  final VoidCallback onComplete;
+  final VoidCallback? onComplete;
 
-  const OnboardingScreen({super.key, required this.onComplete});
+  const OnboardingScreen({super.key, this.onComplete});
 
   @override
   State<OnboardingScreen> createState() => _OnboardingScreenState();
@@ -72,7 +73,18 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         curve: Curves.easeInOutCubic,
       );
     } else {
-      widget.onComplete();
+      _navigateToAuth();
+    }
+  }
+
+  void _navigateToAuth() {
+    if (widget.onComplete != null) {
+      widget.onComplete!();
+    }
+    if (mounted) {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute<void>(builder: (_) => const AuthScreen()),
+      );
     }
   }
 
@@ -83,7 +95,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       appBar: AppBar(
         actions: [
           TextButton(
-            onPressed: widget.onComplete,
+            onPressed: _navigateToAuth,
             child: Text(
               'Skip',
               style: AppTypography.titleMedium.copyWith(
