@@ -19,17 +19,42 @@ class StudyRepository extends ChangeNotifier {
   int _studyStreakDays = 0;
   double _cloudRetentionRate = 0.0;
   bool _isSyncing = false;
+  DateTime? _lastSyncedAt;
+
+  // User Study Preferences
+  int _dailyGoalCards = 20;
+  bool _shuffleStudyCards = false;
+  bool _includeNewInDue = true;
 
   List<Subject> get subjects => List.unmodifiable(_subjects);
-  List<Deck> get decks => List.unmodifiable(_decks);
+
+  /// Starred (isFavorite) decks are automatically pinned to the top
+  List<Deck> get decks {
+    final sorted = List<Deck>.from(_decks);
+    sorted.sort((a, b) {
+      if (a.isFavorite != b.isFavorite) {
+        return a.isFavorite ? -1 : 1;
+      }
+      return b.createdAt.compareTo(a.createdAt);
+    });
+    return List.unmodifiable(sorted);
+  }
+
   List<ReviewLog> get reviewLogs => List.unmodifiable(_reviewLogs);
   int get studyStreakDays => _studyStreakDays;
   bool get isSyncing => _isSyncing;
+  DateTime? get lastSyncedAt => _lastSyncedAt;
+  int get dailyGoalCards => _dailyGoalCards;
+  bool get shuffleStudyCards => _shuffleStudyCards;
+  bool get includeNewInDue => _includeNewInDue;
 
   String get _subjectsCacheKey => 'recall_subjects_v2_${_activeUserId ?? "guest"}';
   String get _decksCacheKey => 'recall_decks_v2_${_activeUserId ?? "guest"}';
   String get _retentionCacheKey => 'recall_retention_v2_${_activeUserId ?? "guest"}';
   String get _streakCacheKey => 'recall_streak_v2_${_activeUserId ?? "guest"}';
+  String get _goalCacheKey => 'recall_goal_v2_${_activeUserId ?? "guest"}';
+  String get _shuffleCacheKey => 'recall_shuffle_v2_${_activeUserId ?? "guest"}';
+  String get _includeNewCacheKey => 'recall_inc_new_v2_${_activeUserId ?? "guest"}';
 
   void setActiveUser(String? userId) {
     if (_activeUserId != userId) {
@@ -62,6 +87,9 @@ class StudyRepository extends ChangeNotifier {
 
       _cloudRetentionRate = cachedRetention ?? 0.0;
       _studyStreakDays = cachedStreak ?? 0;
+      _dailyGoalCards = prefs.getInt(_goalCacheKey) ?? 20;
+      _shuffleStudyCards = prefs.getBool(_shuffleCacheKey) ?? false;
+      _includeNewInDue = prefs.getBool(_includeNewCacheKey) ?? true;
 
       _subjects.clear();
       if (subjectsJson != null && subjectsJson.isNotEmpty) {
@@ -101,7 +129,28 @@ class StudyRepository extends ChangeNotifier {
       await prefs.setString(_decksCacheKey, decksJson);
       await prefs.setDouble(_retentionCacheKey, _cloudRetentionRate);
       await prefs.setInt(_streakCacheKey, _studyStreakDays);
+      await prefs.setInt(_goalCacheKey, _dailyGoalCards);
+      await prefs.setBool(_shuffleCacheKey, _shuffleStudyCards);
+      await prefs.setBool(_includeNewCacheKey, _includeNewInDue);
     } catch (_) {}
+  }
+
+  Future<void> setDailyGoalCards(int goal) async {
+    _dailyGoalCards = goal.clamp(5, 200);
+    notifyListeners();
+    await _saveToCache();
+  }
+
+  Future<void> setShuffleStudyCards(bool value) async {
+    _shuffleStudyCards = value;
+    notifyListeners();
+    await _saveToCache();
+  }
+
+  Future<void> setIncludeNewInDue(bool value) async {
+    _includeNewInDue = value;
+    notifyListeners();
+    await _saveToCache();
   }
 
   Future<void> clearLocalState() async {
@@ -201,6 +250,7 @@ class StudyRepository extends ChangeNotifier {
         _studyStreakDays = 0;
       }
 
+      _lastSyncedAt = DateTime.now();
       await _saveToCache();
     } catch (_) {
       // Keep current user's cached state on transient network glitch
@@ -216,7 +266,27 @@ class StudyRepository extends ChangeNotifier {
 
   int get totalCardsCount => _decks.fold(0, (sum, deck) => sum + deck.totalCards);
 
-  int get totalDueCardsCount => _decks.fold(0, (sum, deck) => sum + deck.dueCardsCount);
+  int get totalNewCardsCount => _decks.fold(0, (sum, deck) => sum + deck.newCardsCount);
+
+  int get totalScheduledDueCount =>
+      _decks.fold(0, (sum, deck) => sum + deck.scheduledDueCount);
+
+  int get totalDueCardsCount => _includeNewInDue
+      ? _decks.fold(0, (sum, deck) => sum + deck.dueCardsCount)
+      : totalScheduledDueCount;
+
+  int get reviewedTodayCount {
+    final now = DateTime.now();
+    bool isToday(DateTime d) =>
+        d.year == now.year && d.month == now.month && d.day == now.day;
+
+    final fromLogs = _reviewLogs.where((r) => isToday(r.timestamp)).map((r) => r.cardId).toSet();
+    final fromCards = allCards
+        .where((c) => c.lastReviewedDate != null && isToday(c.lastReviewedDate!))
+        .map((c) => c.id)
+        .toSet();
+    return {...fromLogs, ...fromCards}.length;
+  }
 
   int get totalMasteredCardsCount =>
       _decks.fold(0, (sum, deck) => sum + deck.masteredCount);
@@ -303,6 +373,26 @@ class StudyRepository extends ChangeNotifier {
       await ApiClient.instance.delete('/subjects/$subjectId');
     }
     await _saveToCache();
+  }
+
+  Future<void> updateSubject({
+    required String subjectId,
+    required String name,
+    required int colorValue,
+  }) async {
+    final idx = _subjects.indexWhere((s) => s.id == subjectId);
+    if (idx != -1) {
+      _subjects[idx] = Subject(id: subjectId, name: name, colorValue: colorValue);
+      notifyListeners();
+      await _saveToCache();
+    }
+
+    if (ApiClient.instance.isAuthenticated && !subjectId.startsWith('sub_')) {
+      await ApiClient.instance.patch('/subjects/$subjectId', {
+        'name': name,
+        'colorHex': toHexColorString(colorValue),
+      });
+    }
   }
 
   // -------------------------------------------------------------
@@ -495,6 +585,70 @@ class StudyRepository extends ChangeNotifier {
     }
   }
 
+  Future<void> updateDeck({
+    required String deckId,
+    required String title,
+    required String description,
+    required String subjectId,
+    required int colorValue,
+  }) async {
+    final idx = _decks.indexWhere((d) => d.id == deckId);
+    if (idx != -1) {
+      _decks[idx] = _decks[idx].copyWith(
+        title: title,
+        description: description,
+        subjectId: subjectId,
+        colorValue: colorValue,
+      );
+      notifyListeners();
+      await _saveToCache();
+    }
+
+    if (ApiClient.instance.isAuthenticated && !deckId.startsWith('deck_')) {
+      await ApiClient.instance.patch('/decks/$deckId', {
+        'title': title,
+        'description': description,
+        'subjectId': subjectId,
+        'colorHex': toHexColorString(colorValue),
+      });
+    }
+  }
+
+  Future<void> resetDeckProgress(String deckId) async {
+    final idx = _decks.indexWhere((d) => d.id == deckId);
+    if (idx == -1) return;
+
+    final resetCards = _decks[idx].cards.map((c) {
+      return c.copyWith(
+        repetitions: 0,
+        intervalDays: 0,
+        easeFactor: 2.5,
+        nextReviewDate: DateTime.now(),
+        timesReviewed: 0,
+        timesForgot: 0,
+        masteryStatus: CardMasteryStatus.learning,
+      );
+    }).toList();
+
+    _decks[idx] = _decks[idx].copyWith(cards: resetCards);
+    notifyListeners();
+    await _saveToCache();
+
+    if (ApiClient.instance.isAuthenticated && !deckId.startsWith('deck_')) {
+      await ApiClient.instance.post('/decks/$deckId/reset', {});
+    }
+  }
+
+  Future<void> resetAllProgress() async {
+    for (final deck in List<Deck>.from(_decks)) {
+      await resetDeckProgress(deck.id);
+    }
+    _reviewLogs.clear();
+    _cloudRetentionRate = 0.0;
+    notifyListeners();
+    await _saveToCache();
+  }
+
   Future<void> addCardToDeck({
     required String deckId,
     required String question,
@@ -561,6 +715,47 @@ class StudyRepository extends ChangeNotifier {
 
     if (ApiClient.instance.isAuthenticated && !cardId.startsWith('card_')) {
       await ApiClient.instance.delete('/cards/$cardId');
+    }
+  }
+
+  Future<void> updateCard({
+    required String deckId,
+    required String cardId,
+    required String question,
+    required String answer,
+    required String explanation,
+    required List<String> tags,
+    required FlashcardType cardType,
+  }) async {
+    final deckIndex = _decks.indexWhere((d) => d.id == deckId);
+    if (deckIndex == -1) return;
+
+    final deck = _decks[deckIndex];
+    final cardIndex = deck.cards.indexWhere((c) => c.id == cardId);
+    if (cardIndex == -1) return;
+
+    final updatedCard = deck.cards[cardIndex].copyWith(
+      question: question,
+      answer: answer,
+      explanation: explanation,
+      tags: tags,
+      cardType: cardType,
+    );
+
+    final updatedList = List<Flashcard>.from(deck.cards);
+    updatedList[cardIndex] = updatedCard;
+    _decks[deckIndex] = deck.copyWith(cards: updatedList);
+    notifyListeners();
+    await _saveToCache();
+
+    if (ApiClient.instance.isAuthenticated && !cardId.startsWith('card_')) {
+      await ApiClient.instance.patch('/cards/$cardId', {
+        'question': question,
+        'answer': answer,
+        'explanation': explanation,
+        'tags': tags,
+        'cardType': cardType.name,
+      });
     }
   }
 }

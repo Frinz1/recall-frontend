@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/models/flashcard_model.dart';
 import '../../core/services/study_repository.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
@@ -24,7 +25,7 @@ class SubjectListScreen extends StatelessWidget {
               IconButton(
                 icon: const Icon(Icons.add_rounded),
                 tooltip: 'Create Subject',
-                onPressed: () => _openCreateSubjectDialog(context),
+                onPressed: () => _openSubjectDialog(context),
               ),
             ],
           ),
@@ -34,7 +35,7 @@ class SubjectListScreen extends StatelessWidget {
                   title: 'No Subjects Yet',
                   description: 'Create academic subjects to organize your study materials.',
                   ctaLabel: 'Add First Subject',
-                  onCtaPressed: () => _openCreateSubjectDialog(context),
+                  onCtaPressed: () => _openSubjectDialog(context),
                 )
               : ListView.builder(
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
@@ -59,7 +60,7 @@ class SubjectListScreen extends StatelessWidget {
                             width: 44,
                             height: 44,
                             decoration: BoxDecoration(
-                              color: Color(sub.colorValue).withOpacity(0.18),
+                              color: Color(sub.colorValue).withValues(alpha: 0.18),
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(color: Color(sub.colorValue)),
                             ),
@@ -76,15 +77,36 @@ class SubjectListScreen extends StatelessWidget {
                             '$deckCount flashcard decks',
                             style: AppTypography.bodySmall,
                           ),
-                          trailing: IconButton(
-                            icon: const Icon(Icons.delete_outline_rounded, color: AppColors.textMuted),
-                            tooltip: 'Delete Subject',
-                            onPressed: () async {
-                              await StudyRepository.instance.deleteSubject(sub.id);
-                              if (context.mounted) {
-                                ToastFeedback.showInfo(context, 'Subject "${sub.name}" removed.');
-                              }
-                            },
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.edit_outlined,
+                                  color: AppColors.textSecondary,
+                                  size: 20,
+                                ),
+                                tooltip: 'Edit Subject',
+                                onPressed: () => _openSubjectDialog(context, existing: sub),
+                              ),
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.delete_outline_rounded,
+                                  color: AppColors.textMuted,
+                                  size: 20,
+                                ),
+                                tooltip: 'Delete Subject',
+                                onPressed: () async {
+                                  await StudyRepository.instance.deleteSubject(sub.id);
+                                  if (context.mounted) {
+                                    ToastFeedback.showInfo(
+                                      context,
+                                      'Subject "${sub.name}" removed.',
+                                    );
+                                  }
+                                },
+                              ),
+                            ],
                           ),
                         ),
                       ),
@@ -96,9 +118,10 @@ class SubjectListScreen extends StatelessWidget {
     );
   }
 
-  void _openCreateSubjectDialog(BuildContext context) {
-    final nameCtrl = TextEditingController();
-    int selectedColor = 0xFF6366F1;
+  void _openSubjectDialog(BuildContext context, {Subject? existing}) {
+    final isEditing = existing != null;
+    final nameCtrl = TextEditingController(text: existing?.name ?? '');
+    int selectedColor = existing?.colorValue ?? 0xFF6366F1;
     final colorOptions = [
       0xFF6366F1, // Indigo
       0xFF3B82F6, // Blue
@@ -109,7 +132,7 @@ class SubjectListScreen extends StatelessWidget {
       0xFF06B6D4, // Cyan
     ];
 
-    showDialog(
+    showDialog<void>(
       context: context,
       builder: (ctx) {
         return StatefulBuilder(
@@ -120,13 +143,17 @@ class SubjectListScreen extends StatelessWidget {
                 borderRadius: BorderRadius.circular(20),
                 side: const BorderSide(color: AppColors.borderSubtle),
               ),
-              title: const Text('New Subject', style: AppTypography.titleLarge),
+              title: Text(
+                isEditing ? 'Edit Subject' : 'New Subject',
+                style: AppTypography.titleLarge,
+              ),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   TextField(
                     controller: nameCtrl,
+                    autofocus: true,
                     style: AppTypography.bodyMedium.copyWith(color: Colors.white),
                     decoration: InputDecoration(
                       labelText: 'Subject Name',
@@ -141,6 +168,7 @@ class SubjectListScreen extends StatelessWidget {
                   const SizedBox(height: 10),
                   Wrap(
                     spacing: 8,
+                    runSpacing: 8,
                     children: colorOptions.map((c) {
                       final isSelected = selectedColor == c;
                       return GestureDetector(
@@ -173,18 +201,32 @@ class SubjectListScreen extends StatelessWidget {
                   child: const Text('Cancel'),
                 ),
                 AppButton(
-                  label: 'Create',
+                  label: isEditing ? 'Save Changes' : 'Create',
                   onPressed: () async {
                     final name = nameCtrl.text.trim();
-                    if (name.isEmpty) return;
+                    if (name.isEmpty) {
+                      ToastFeedback.showError(context, 'Please enter a subject name.');
+                      return;
+                    }
 
                     Navigator.of(ctx).pop();
-                    await StudyRepository.instance.addSubject(
-                      name: name,
-                      colorValue: selectedColor,
-                    );
-                    if (context.mounted) {
-                      ToastFeedback.showSuccess(context, 'Subject "$name" created and synced.');
+                    if (isEditing) {
+                      await StudyRepository.instance.updateSubject(
+                        subjectId: existing.id,
+                        name: name,
+                        colorValue: selectedColor,
+                      );
+                      if (context.mounted) {
+                        ToastFeedback.showSuccess(context, 'Subject "$name" updated.');
+                      }
+                    } else {
+                      await StudyRepository.instance.addSubject(
+                        name: name,
+                        colorValue: selectedColor,
+                      );
+                      if (context.mounted) {
+                        ToastFeedback.showSuccess(context, 'Subject "$name" created and synced.');
+                      }
                     }
                   },
                 ),

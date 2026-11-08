@@ -8,19 +8,37 @@ import '../../core/widgets/toast_feedback.dart';
 
 class CardEditorDialog extends StatefulWidget {
   final String deckId;
+  final Flashcard? existingCard;
 
-  const CardEditorDialog({super.key, required this.deckId});
+  const CardEditorDialog({
+    super.key,
+    required this.deckId,
+    this.existingCard,
+  });
 
   @override
   State<CardEditorDialog> createState() => _CardEditorDialogState();
 }
 
 class _CardEditorDialogState extends State<CardEditorDialog> {
-  final _questionController = TextEditingController();
-  final _answerController = TextEditingController();
-  final _explanationController = TextEditingController();
-  final _tagsController = TextEditingController();
-  FlashcardType _cardType = FlashcardType.standard;
+  late final TextEditingController _questionController;
+  late final TextEditingController _answerController;
+  late final TextEditingController _explanationController;
+  late final TextEditingController _tagsController;
+  late FlashcardType _cardType;
+
+  bool get _isEditing => widget.existingCard != null;
+
+  @override
+  void initState() {
+    super.initState();
+    final card = widget.existingCard;
+    _questionController = TextEditingController(text: card?.question ?? '');
+    _answerController = TextEditingController(text: card?.answer ?? '');
+    _explanationController = TextEditingController(text: card?.explanation ?? '');
+    _tagsController = TextEditingController(text: card?.tags.join(', ') ?? '');
+    _cardType = card?.cardType ?? FlashcardType.standard;
+  }
 
   @override
   void dispose() {
@@ -31,7 +49,7 @@ class _CardEditorDialogState extends State<CardEditorDialog> {
     super.dispose();
   }
 
-  void _saveCard() {
+  Future<void> _saveCard() async {
     final q = _questionController.text.trim();
     final a = _answerController.text.trim();
 
@@ -46,17 +64,34 @@ class _CardEditorDialogState extends State<CardEditorDialog> {
         .where((t) => t.isNotEmpty)
         .toList();
 
-    StudyRepository.instance.addCardToDeck(
-      deckId: widget.deckId,
-      question: q,
-      answer: a,
-      explanation: _explanationController.text.trim(),
-      tags: tags,
-      cardType: _cardType,
-    );
-
-    ToastFeedback.showSuccess(context, 'Flashcard added to deck!');
     Navigator.of(context).pop();
+
+    if (_isEditing) {
+      await StudyRepository.instance.updateCard(
+        deckId: widget.deckId,
+        cardId: widget.existingCard!.id,
+        question: q,
+        answer: a,
+        explanation: _explanationController.text.trim(),
+        tags: tags,
+        cardType: _cardType,
+      );
+      if (mounted) {
+        ToastFeedback.showSuccess(context, 'Flashcard updated!');
+      }
+    } else {
+      await StudyRepository.instance.addCardToDeck(
+        deckId: widget.deckId,
+        question: q,
+        answer: a,
+        explanation: _explanationController.text.trim(),
+        tags: tags,
+        cardType: _cardType,
+      );
+      if (mounted) {
+        ToastFeedback.showSuccess(context, 'Flashcard added to deck!');
+      }
+    }
   }
 
   @override
@@ -69,7 +104,7 @@ class _CardEditorDialogState extends State<CardEditorDialog> {
       ),
       insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 500, maxHeight: 650),
+        constraints: const BoxConstraints(maxWidth: 500, maxHeight: 680),
         child: Padding(
           padding: const EdgeInsets.all(24.0),
           child: Column(
@@ -78,19 +113,51 @@ class _CardEditorDialogState extends State<CardEditorDialog> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('Create Flashcard', style: AppTypography.titleLarge),
+                  Text(
+                    _isEditing ? 'Edit Flashcard' : 'Create Flashcard',
+                    style: AppTypography.titleLarge,
+                  ),
                   IconButton(
                     icon: const Icon(Icons.close_rounded),
                     onPressed: () => Navigator.of(context).pop(),
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
               Expanded(
                 child: SingleChildScrollView(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      const Text('Card Type', style: AppTypography.labelMedium),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: FlashcardType.values.map((type) {
+                          final selected = _cardType == type;
+                          return ChoiceChip(
+                            label: Text(
+                              type.label,
+                              style: AppTypography.badge.copyWith(
+                                color: selected ? AppColors.bgCanvas : AppColors.textSecondary,
+                              ),
+                            ),
+                            selected: selected,
+                            onSelected: (_) => setState(() => _cardType = type),
+                            backgroundColor: AppColors.bgSurface2,
+                            selectedColor: AppColors.primary,
+                            showCheckmark: false,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                              side: BorderSide(
+                                color: selected ? AppColors.primary : AppColors.borderSubtle,
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                      const SizedBox(height: 16),
                       _buildTextField(
                         controller: _questionController,
                         label: 'Front / Question *',
@@ -108,7 +175,7 @@ class _CardEditorDialogState extends State<CardEditorDialog> {
                       _buildTextField(
                         controller: _explanationController,
                         label: 'Detailed Concept Explanation (Optional)',
-                        hint: 'Additional context shown after flip...',
+                        hint: 'Additional context shown after flip or in quiz...',
                         maxLines: 2,
                       ),
                       const SizedBox(height: 16),
@@ -135,7 +202,7 @@ class _CardEditorDialogState extends State<CardEditorDialog> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: AppButton(
-                      label: 'Save Card',
+                      label: _isEditing ? 'Update Card' : 'Save Card',
                       variant: AppButtonVariant.primary,
                       onPressed: _saveCard,
                     ),

@@ -36,8 +36,12 @@ class _StudySessionScreenState extends State<StudySessionScreen> {
   void initState() {
     super.initState();
     _sessionStartTime = DateTime.now();
+    final repo = StudyRepository.instance;
     if (widget.onlyDueCards) {
-      _sessionCards = widget.deck.cards.where((c) => c.isDue).toList();
+      _sessionCards = widget.deck.cards.where((c) {
+        if (!repo.includeNewInDue && c.isNewCard) return false;
+        return c.isDue;
+      }).toList();
       if (_sessionCards.isEmpty) {
         _sessionCards = List.from(widget.deck.cards);
       }
@@ -45,7 +49,11 @@ class _StudySessionScreenState extends State<StudySessionScreen> {
       _sessionCards = List.from(widget.deck.cards);
     }
 
-    StudyRepository.instance.startStudySession(widget.deck.id).then((id) {
+    if (repo.shuffleStudyCards && _sessionCards.length > 1) {
+      _sessionCards.shuffle();
+    }
+
+    repo.startStudySession(widget.deck.id).then((id) {
       if (mounted) {
         _sessionId = id;
       }

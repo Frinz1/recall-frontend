@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../../core/models/flashcard_model.dart';
-import '../../core/services/auth_service.dart';
 import '../../core/services/study_repository.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
@@ -12,8 +11,13 @@ import '../subject/subject_list_screen.dart';
 
 class DashboardScreen extends StatelessWidget {
   final VoidCallback onNavigateToDecks;
+  final VoidCallback? onNavigateToSettings;
 
-  const DashboardScreen({super.key, required this.onNavigateToDecks});
+  const DashboardScreen({
+    super.key,
+    required this.onNavigateToDecks,
+    this.onNavigateToSettings,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -22,16 +26,28 @@ class DashboardScreen extends StatelessWidget {
       builder: (context, _) {
         final repo = StudyRepository.instance;
         final totalDue = repo.totalDueCardsCount;
+        final scheduledDue = repo.totalScheduledDueCount;
+        final newCount = repo.totalNewCardsCount;
         final weakCards = repo.weakCards;
         final decks = repo.decks;
         final subjects = repo.subjects;
+        final reviewedToday = repo.reviewedTodayCount;
+        final dailyGoal = repo.dailyGoalCards;
 
-        // Recommend deck with most due cards
+        // Recommend deck: prioritize Starred decks with due cards, then highest due count
         Deck? priorityDeck;
         if (decks.isNotEmpty) {
           final sorted = List<Deck>.from(decks)
-            ..sort((a, b) => b.dueCardsCount.compareTo(a.dueCardsCount));
-          priorityDeck = sorted.first;
+            ..sort((a, b) {
+              if (a.isFavorite != b.isFavorite) {
+                return a.isFavorite ? -1 : 1;
+              }
+              return b.dueCardsCount.compareTo(a.dueCardsCount);
+            });
+          priorityDeck = sorted.firstWhere(
+            (d) => d.dueCardsCount > 0,
+            orElse: () => sorted.first,
+          );
         }
 
         return Scaffold(
@@ -55,9 +71,10 @@ class DashboardScreen extends StatelessWidget {
               ],
             ),
             actions: [
+              // Streak Pill
               Container(
-                margin: const EdgeInsets.only(right: 4),
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                margin: const EdgeInsets.only(right: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                 decoration: BoxDecoration(
                   color: AppColors.bgSurface2,
                   borderRadius: BorderRadius.circular(20),
@@ -65,341 +82,370 @@ class DashboardScreen extends StatelessWidget {
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.local_fire_department_rounded, color: Colors.orange, size: 17),
+                    const Icon(
+                      Icons.local_fire_department_rounded,
+                      color: Colors.orange,
+                      size: 17,
+                    ),
                     const SizedBox(width: 4),
                     Text(
-                      '${repo.studyStreakDays}d',
+                      '${repo.studyStreakDays}d streak',
                       style: AppTypography.badge.copyWith(color: Colors.orange),
                     ),
                   ],
                 ),
               ),
-              IconButton(
-                icon: repo.isSyncing
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: AppColors.primaryLight,
-                        ),
-                      )
-                    : const Icon(Icons.cloud_sync_rounded, size: 20),
-                tooltip: 'Sync with Cloud',
-                onPressed: repo.isSyncing
-                    ? null
-                    : () async {
-                        await repo.fetchAllFromCloud();
-                        if (context.mounted) {
-                          ToastFeedback.showInfo(context, 'Synced with Recall Cloud.');
-                        }
-                      },
-              ),
-              IconButton(
-                icon: const Icon(Icons.logout_rounded, size: 20),
-                tooltip: 'Sign Out',
-                onPressed: () {
-                  AuthService.instance.logout();
-                },
-              ),
+              if (onNavigateToSettings != null)
+                IconButton(
+                  icon: const Icon(Icons.tune_rounded, size: 20),
+                  tooltip: 'Settings & Preferences',
+                  onPressed: onNavigateToSettings,
+                ),
               const SizedBox(width: 8),
             ],
           ),
-          body: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Daily Readiness Hero Banner
-                _buildHeroBanner(context, totalDue, priorityDeck, decks.isEmpty),
+          body: RefreshIndicator(
+            color: AppColors.primary,
+            backgroundColor: AppColors.bgSurface1,
+            onRefresh: () => repo.fetchAllFromCloud(),
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Daily Readiness Hero Banner
+                  _buildHeroBanner(
+                    context,
+                    totalDue: totalDue,
+                    scheduledDue: scheduledDue,
+                    newCount: newCount,
+                    priorityDeck: priorityDeck,
+                    hasNoDecks: decks.isEmpty,
+                    reviewedToday: reviewedToday,
+                    dailyGoal: dailyGoal,
+                  ),
 
-                const SizedBox(height: 24),
+                  const SizedBox(height: 20),
 
-                // Metrics Row
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildStatTile(
-                        label: 'Due Cards',
-                        value: '$totalDue',
-                        color: totalDue > 0 ? AppColors.danger : AppColors.success,
-                        icon: Icons.access_time_rounded,
+                  // Metrics Row
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildStatTile(
+                          label: scheduledDue > 0 ? 'Due Today' : 'New Cards',
+                          value: scheduledDue > 0 ? '$scheduledDue' : '$newCount',
+                          color: scheduledDue > 0
+                              ? AppColors.danger
+                              : (newCount > 0 ? AppColors.accentCyan : AppColors.success),
+                          icon: scheduledDue > 0
+                              ? Icons.access_time_rounded
+                              : Icons.auto_awesome_rounded,
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _buildStatTile(
-                        label: 'Mastered',
-                        value: '${repo.totalMasteredCardsCount}',
-                        color: AppColors.success,
-                        icon: Icons.check_circle_outline_rounded,
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _buildStatTile(
+                          label: 'Mastered',
+                          value: '${repo.totalMasteredCardsCount}',
+                          color: AppColors.success,
+                          icon: Icons.check_circle_outline_rounded,
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _buildStatTile(
-                        label: 'Retention',
-                        value: '${repo.overallRetentionRate.round()}%',
-                        color: AppColors.primaryLight,
-                        icon: Icons.psychology_outlined,
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _buildStatTile(
+                          label: 'Retention',
+                          value: '${repo.overallRetentionRate.round()}%',
+                          color: AppColors.primaryLight,
+                          icon: Icons.psychology_outlined,
+                        ),
                       ),
-                    ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // Weakness Quick Alert (if any weak cards)
+                  if (weakCards.isNotEmpty) ...[
+                    _buildWeaknessAlertBanner(context, weakCards.length),
+                    const SizedBox(height: 24),
                   ],
-                ),
 
-                const SizedBox(height: 28),
-
-                // Weakness Quick Alert (if any weak cards)
-                if (weakCards.isNotEmpty) ...[
-                  _buildWeaknessAlertBanner(context, weakCards.length),
-                  const SizedBox(height: 28),
-                ],
-
-                // Subjects Section (Quick Create & Manage Subjects)
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text('Subjects', style: AppTypography.titleLarge),
-                    Row(
-                      children: [
-                        TextButton.icon(
-                          onPressed: () => _openQuickCreateSubjectDialog(context),
-                          icon: const Icon(Icons.add_rounded, size: 18, color: AppColors.primary),
-                          label: const Text(
-                            'New Subject',
-                            style: TextStyle(
-                              color: AppColors.primary,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                        IconButton(
-                          icon: const Icon(
-                            Icons.tune_rounded,
-                            size: 18,
-                            color: AppColors.textSecondary,
-                          ),
-                          tooltip: 'Manage All Subjects',
-                          onPressed: () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute<void>(builder: (_) => const SubjectListScreen()),
-                            );
-                          },
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-
-                if (subjects.isEmpty)
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: AppColors.bgCard,
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: AppColors.borderSubtle),
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 40,
-                          height: 40,
-                          decoration: BoxDecoration(
-                            color: AppColors.primary.withValues(alpha: 0.14),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: const Icon(
-                            Icons.category_outlined,
-                            color: AppColors.primary,
-                            size: 20,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        const Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('No subjects yet', style: AppTypography.titleMedium),
-                              SizedBox(height: 2),
-                              Text(
-                                'Create a subject category (e.g. Networking, Calculus) to organize your decks.',
-                                style: AppTypography.bodySmall,
+                  // Subjects Section (Quick Create & Manage Subjects)
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('Subjects', style: AppTypography.titleLarge),
+                      Row(
+                        children: [
+                          TextButton.icon(
+                            onPressed: () => _openQuickCreateSubjectDialog(context),
+                            icon: const Icon(Icons.add_rounded, size: 18, color: AppColors.primary),
+                            label: const Text(
+                              'New Subject',
+                              style: TextStyle(
+                                color: AppColors.primary,
+                                fontWeight: FontWeight.w700,
                               ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        TextButton(
-                          onPressed: () => _openQuickCreateSubjectDialog(context),
-                          child: const Text(
-                            '+ Add',
-                            style: TextStyle(
-                              color: AppColors.primary,
-                              fontWeight: FontWeight.w700,
                             ),
                           ),
-                        ),
-                      ],
-                    ),
-                  )
-                else
-                  SizedBox(
-                    height: 44,
-                    child: ListView.separated(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: subjects.length,
-                      separatorBuilder: (_, __) => const SizedBox(width: 8),
-                      itemBuilder: (context, index) {
-                        final sub = subjects[index];
-                        final count = decks.where((d) => d.subjectId == sub.id).length;
-                        return InkWell(
-                          onTap: () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute<void>(builder: (_) => const SubjectListScreen()),
-                            );
-                          },
-                          borderRadius: BorderRadius.circular(12),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          IconButton(
+                            icon: const Icon(
+                              Icons.folder_open_rounded,
+                              size: 18,
+                              color: AppColors.textSecondary,
+                            ),
+                            tooltip: 'Manage All Subjects',
+                            onPressed: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute<void>(builder: (_) => const SubjectListScreen()),
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+
+                  if (subjects.isEmpty)
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: AppColors.bgCard,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: AppColors.borderSubtle),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 40,
+                            height: 40,
                             decoration: BoxDecoration(
-                              color: AppColors.bgCard,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: Color(sub.colorValue).withValues(alpha: 0.5),
-                              ),
+                              color: AppColors.primary.withValues(alpha: 0.14),
+                              borderRadius: BorderRadius.circular(10),
                             ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
+                            child: const Icon(
+                              Icons.category_outlined,
+                              color: AppColors.primary,
+                              size: 20,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          const Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Container(
-                                  width: 10,
-                                  height: 10,
-                                  decoration: BoxDecoration(
-                                    color: Color(sub.colorValue),
-                                    shape: BoxShape.circle,
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
+                                Text('No subjects yet', style: AppTypography.titleMedium),
+                                SizedBox(height: 2),
                                 Text(
-                                  sub.name,
-                                  style: AppTypography.labelMedium.copyWith(color: Colors.white),
-                                ),
-                                const SizedBox(width: 6),
-                                Text(
-                                  '($count)',
-                                  style: AppTypography.bodySmall.copyWith(fontSize: 11),
+                                  'Create a subject category (e.g. Networking, Calculus) to organize your decks.',
+                                  style: AppTypography.bodySmall,
                                 ),
                               ],
                             ),
                           ),
-                        );
-                      },
-                    ),
-                  ),
-
-                const SizedBox(height: 24),
-
-                // Active Decks Carousel / List Header
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text('Active Decks', style: AppTypography.titleLarge),
-                    TextButton(
-                      onPressed: onNavigateToDecks,
-                      child: const Text(
-                        'View All',
-                        style: TextStyle(color: AppColors.primaryLight),
+                          const SizedBox(width: 8),
+                          TextButton(
+                            onPressed: () => _openQuickCreateSubjectDialog(context),
+                            child: const Text(
+                              '+ Add',
+                              style: TextStyle(
+                                color: AppColors.primary,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  else
+                    SizedBox(
+                      height: 44,
+                      child: ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: subjects.length,
+                        separatorBuilder: (_, __) => const SizedBox(width: 8),
+                        itemBuilder: (context, index) {
+                          final sub = subjects[index];
+                          final count = decks.where((d) => d.subjectId == sub.id).length;
+                          return InkWell(
+                            onTap: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute<void>(builder: (_) => const SubjectListScreen()),
+                              );
+                            },
+                            borderRadius: BorderRadius.circular(12),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: AppColors.bgCard,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: Color(sub.colorValue).withValues(alpha: 0.5),
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Container(
+                                    width: 10,
+                                    height: 10,
+                                    decoration: BoxDecoration(
+                                      color: Color(sub.colorValue),
+                                      shape: BoxShape.circle,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    sub.name,
+                                    style: AppTypography.labelMedium.copyWith(color: Colors.white),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    '($count)',
+                                    style: AppTypography.bodySmall.copyWith(fontSize: 11),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
                       ),
                     ),
-                  ],
-                ),
-                const SizedBox(height: 12),
 
-                if (decks.isEmpty)
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: AppColors.bgCard,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: AppColors.borderSubtle),
-                    ),
-                    child: Column(
-                      children: [
-                        const Icon(
-                          Icons.style_outlined,
-                          color: AppColors.textMuted,
-                          size: 32,
+                  const SizedBox(height: 24),
+
+                  // Active Decks Carousel / List Header
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('Active Decks', style: AppTypography.titleLarge),
+                      TextButton(
+                        onPressed: onNavigateToDecks,
+                        child: const Text(
+                          'View All',
+                          style: TextStyle(color: AppColors.primaryLight),
                         ),
-                        const SizedBox(height: 10),
-                        const Text('No Flashcard Decks Yet', style: AppTypography.titleMedium),
-                        const SizedBox(height: 4),
-                        const Text(
-                          'Create your first deck in the Decks tab to start studying with SM-2 spaced repetition.',
-                          textAlign: TextAlign.center,
-                          style: AppTypography.bodySmall,
-                        ),
-                        const SizedBox(height: 14),
-                        AppButton(
-                          label: 'Create Your First Deck',
-                          icon: Icons.add_rounded,
-                          onPressed: onNavigateToDecks,
-                        ),
-                      ],
-                    ),
-                  )
-                else
-                  ...decks.take(3).map((deck) {
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 12),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+
+                  if (decks.isEmpty)
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(14),
+                        color: AppColors.bgCard,
+                        borderRadius: BorderRadius.circular(16),
                         border: Border.all(color: AppColors.borderSubtle),
                       ),
-                      child: Material(
-                        color: AppColors.bgCard,
-                        borderRadius: BorderRadius.circular(14),
-                        clipBehavior: Clip.antiAlias,
-                        child: ListTile(
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                          leading: Container(
-                            width: 42,
-                            height: 42,
-                            decoration: BoxDecoration(
-                              color: Color(deck.colorValue).withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(color: Color(deck.colorValue).withValues(alpha: 0.5)),
-                            ),
-                            child: Icon(Icons.style_rounded, color: Color(deck.colorValue)),
+                      child: Column(
+                        children: [
+                          const Icon(
+                            Icons.style_outlined,
+                            color: AppColors.textMuted,
+                            size: 32,
                           ),
-                          title: Text(
-                            deck.title,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: AppTypography.titleMedium.copyWith(fontSize: 15),
+                          const SizedBox(height: 10),
+                          const Text('No Flashcard Decks Yet', style: AppTypography.titleMedium),
+                          const SizedBox(height: 4),
+                          const Text(
+                            'Create your first deck in the Decks tab to start studying with SM-2 spaced repetition.',
+                            textAlign: TextAlign.center,
+                            style: AppTypography.bodySmall,
                           ),
-                          subtitle: Padding(
-                            padding: const EdgeInsets.only(top: 4),
-                            child: Text(
-                              '${deck.totalCards} cards • ${deck.dueCardsCount} due',
-                              style: AppTypography.bodySmall,
-                            ),
+                          const SizedBox(height: 14),
+                          AppButton(
+                            label: 'Create Your First Deck',
+                            icon: Icons.add_rounded,
+                            onPressed: onNavigateToDecks,
                           ),
-                          trailing: const Icon(Icons.chevron_right_rounded, color: AppColors.textMuted),
-                          onTap: () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute<void>(
-                                builder: (_) => DeckDetailScreen(deckId: deck.id),
-                              ),
-                            );
-                          },
-                        ),
+                        ],
                       ),
-                    );
-                  }),
-              ],
+                    )
+                  else
+                    ...decks.take(4).map((deck) {
+                      final subtitleParts = <String>['${deck.totalCards} cards'];
+                      if (deck.newCardsCount > 0) {
+                        subtitleParts.add('${deck.newCardsCount} new');
+                      }
+                      if (deck.scheduledDueCount > 0) {
+                        subtitleParts.add('${deck.scheduledDueCount} due today');
+                      }
+
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: deck.isFavorite
+                                ? Colors.amber.withValues(alpha: 0.45)
+                                : AppColors.borderSubtle,
+                          ),
+                        ),
+                        child: Material(
+                          color: AppColors.bgCard,
+                          borderRadius: BorderRadius.circular(14),
+                          clipBehavior: Clip.antiAlias,
+                          child: ListTile(
+                            contentPadding:
+                                const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            leading: Container(
+                              width: 42,
+                              height: 42,
+                              decoration: BoxDecoration(
+                                color: Color(deck.colorValue).withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                  color: Color(deck.colorValue).withValues(alpha: 0.5),
+                                ),
+                              ),
+                              child: Icon(Icons.style_rounded, color: Color(deck.colorValue)),
+                            ),
+                            title: Row(
+                              children: [
+                                Flexible(
+                                  child: Text(
+                                    deck.title,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: AppTypography.titleMedium.copyWith(fontSize: 15),
+                                  ),
+                                ),
+                                if (deck.isFavorite) ...[
+                                  const SizedBox(width: 6),
+                                  const Icon(Icons.star_rounded, size: 15, color: Colors.amber),
+                                ],
+                              ],
+                            ),
+                            subtitle: Padding(
+                              padding: const EdgeInsets.only(top: 4),
+                              child: Text(
+                                subtitleParts.join(' • '),
+                                style: AppTypography.bodySmall,
+                              ),
+                            ),
+                            trailing: const Icon(
+                              Icons.chevron_right_rounded,
+                              color: AppColors.textMuted,
+                            ),
+                            onTap: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute<void>(
+                                  builder: (_) => DeckDetailScreen(deckId: deck.id),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      );
+                    }),
+                ],
+              ),
             ),
           ),
         );
@@ -408,11 +454,38 @@ class DashboardScreen extends StatelessWidget {
   }
 
   Widget _buildHeroBanner(
-    BuildContext context,
-    int totalDue,
-    Deck? priorityDeck,
-    bool hasNoDecks,
-  ) {
+    BuildContext context, {
+    required int totalDue,
+    required int scheduledDue,
+    required int newCount,
+    required Deck? priorityDeck,
+    required bool hasNoDecks,
+    required int reviewedToday,
+    required int dailyGoal,
+  }) {
+    final goalProgress = dailyGoal > 0 ? (reviewedToday / dailyGoal).clamp(0.0, 1.0) : 0.0;
+
+    String headline;
+    String subtext;
+    if (hasNoDecks) {
+      headline = 'Ready to Start Studying?';
+      subtext =
+          'Your workspace is clean (0 decks). Create a Subject and Flashcard Deck to begin your spaced repetition schedule.';
+    } else if (scheduledDue > 0) {
+      headline = '$scheduledDue Cards Due Today';
+      subtext = newCount > 0
+          ? 'Plus $newCount new cards ready to learn. Reviewing right when intervals expire maximizes long-term memory.'
+          : 'Reviewing cards right when they hit the forgetting threshold yields 92% higher retention.';
+    } else if (newCount > 0 && totalDue > 0) {
+      headline = '$newCount New Cards Ready to Learn';
+      subtext =
+          'Complete your first pass on these new flashcards to schedule their SM-2 spaced repetition intervals.';
+    } else {
+      headline = 'All Caught Up For Today!';
+      subtext =
+          'Outstanding work maintaining your streak. Explore your decks or test your knowledge with a quiz.';
+    }
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
@@ -436,6 +509,7 @@ class DashboardScreen extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -451,28 +525,37 @@ class DashboardScreen extends StatelessWidget {
                   ),
                 ),
               ),
+              Text(
+                'Daily Goal: $reviewedToday / $dailyGoal',
+                style: AppTypography.badge.copyWith(
+                  fontSize: 11,
+                  color: const Color(0xFFC7D2FE),
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 12),
           Text(
-            hasNoDecks
-                ? 'Ready to Start Studying?'
-                : (totalDue > 0
-                    ? '$totalDue Flashcards Due for Review'
-                    : 'All Caught Up For Today!'),
+            headline,
             style: AppTypography.displayMedium.copyWith(fontSize: 22),
           ),
           const SizedBox(height: 6),
           Text(
-            hasNoDecks
-                ? 'Your workspace is clean (0 decks). Create a Subject and Flashcard Deck to begin your spaced repetition schedule.'
-                : (totalDue > 0
-                    ? 'Reviewing cards right when they hit the forgetting threshold yields 92% higher retention.'
-                    : 'Outstanding work maintaining your streak. Feel free to explore your decks or test your knowledge with a quiz.'),
+            subtext,
             style: AppTypography.bodyMedium.copyWith(color: const Color(0xFFC7D2FE)),
           ),
+          const SizedBox(height: 14),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: goalProgress,
+              minHeight: 6,
+              backgroundColor: Colors.black.withValues(alpha: 0.28),
+              valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
+            ),
+          ),
           if (totalDue > 0 && priorityDeck != null) ...[
-            const SizedBox(height: 18),
+            const SizedBox(height: 16),
             AppButton(
               label: 'Start Smart Review (${priorityDeck.title})',
               icon: Icons.play_arrow_rounded,
@@ -481,7 +564,7 @@ class DashboardScreen extends StatelessWidget {
                 Navigator.of(context).push(
                   MaterialPageRoute<void>(
                     builder: (_) => StudySessionScreen(
-                      deck: priorityDeck!,
+                      deck: priorityDeck,
                       onlyDueCards: true,
                     ),
                   ),
@@ -489,7 +572,7 @@ class DashboardScreen extends StatelessWidget {
               },
             ),
           ] else if (hasNoDecks) ...[
-            const SizedBox(height: 18),
+            const SizedBox(height: 16),
             AppButton(
               label: 'Create First Subject & Deck',
               icon: Icons.add_circle_outline_rounded,

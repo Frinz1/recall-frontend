@@ -136,7 +136,10 @@ class Flashcard {
     };
   }
 
-  /// Check if card is due for review today or overdue
+  /// True when the card is newly created and has never been studied yet
+  bool get isNewCard => timesReviewed == 0;
+
+  /// Check if card is due for review today or overdue (includes new cards ready for initial learning)
   bool get isDue {
     final now = DateTime.now();
     return nextReviewDate.isBefore(now) ||
@@ -144,6 +147,9 @@ class Flashcard {
             nextReviewDate.month == now.month &&
             nextReviewDate.day == now.day);
   }
+
+  /// True only for previously studied cards whose SM-2 review interval is due today
+  bool get isScheduledDue => timesReviewed > 0 && isDue;
 
   /// Calculates failure rate for weakness detection
   double get failureRate {
@@ -258,6 +264,8 @@ class Deck {
   }
 
   int get totalCards => cards.length;
+  int get newCardsCount => cards.where((c) => c.isNewCard).length;
+  int get scheduledDueCount => cards.where((c) => c.isScheduledDue).length;
   int get dueCardsCount => cards.where((c) => c.isDue).length;
   int get masteredCount => cards.where((c) => c.masteryStatus == CardMasteryStatus.mastered).length;
   int get learningCount => cards.where((c) => c.masteryStatus == CardMasteryStatus.learning).length;

@@ -43,12 +43,30 @@ class AppBadge extends StatelessWidget {
     }
   }
 
+  factory AppBadge.newCard() {
+    return const AppBadge(
+      label: 'New Card',
+      backgroundColor: Color(0xFF083344),
+      textColor: Color(0xFF67E8F9),
+      icon: Icons.auto_awesome_rounded,
+    );
+  }
+
   factory AppBadge.dueToday() {
     return const AppBadge(
       label: 'Due Today',
       backgroundColor: Color(0xFF7F1D1D),
       textColor: Color(0xFFFCA5A5),
       icon: Icons.timer_outlined,
+    );
+  }
+
+  factory AppBadge.scheduledIn(int days) {
+    return AppBadge(
+      label: 'In ${days < 1 ? 1 : days}d',
+      backgroundColor: const Color(0xFF1E293B),
+      textColor: const Color(0xFF94A3B8),
+      icon: Icons.event_available_rounded,
     );
   }
 

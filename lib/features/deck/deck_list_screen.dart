@@ -18,6 +18,7 @@ class DeckListScreen extends StatefulWidget {
 
 class _DeckListScreenState extends State<DeckListScreen> {
   String? _selectedSubjectId;
+  bool _onlyStarred = false;
   String _searchQuery = '';
 
   @override
@@ -29,6 +30,9 @@ class _DeckListScreenState extends State<DeckListScreen> {
         final subjects = repo.subjects;
 
         var filteredDecks = repo.decks.where((deck) {
+          if (_onlyStarred && !deck.isFavorite) {
+            return false;
+          }
           if (_selectedSubjectId != null && deck.subjectId != _selectedSubjectId) {
             return false;
           }
@@ -92,7 +96,7 @@ class _DeckListScreenState extends State<DeckListScreen> {
                 ),
               ),
 
-              // Subject Filter Chips + Quick Add Subject Button
+              // Subject + Starred Filter Chips
               SizedBox(
                 height: 48,
                 child: ListView(
@@ -116,15 +120,28 @@ class _DeckListScreenState extends State<DeckListScreen> {
                       ),
                     ),
                     _buildChip(
-                      label: 'All Subjects',
-                      isSelected: _selectedSubjectId == null,
-                      onTap: () => setState(() => _selectedSubjectId = null),
+                      label: 'All Decks',
+                      isSelected: !_onlyStarred && _selectedSubjectId == null,
+                      onTap: () => setState(() {
+                        _onlyStarred = false;
+                        _selectedSubjectId = null;
+                      }),
+                    ),
+                    _buildChip(
+                      label: '★ Starred',
+                      isSelected: _onlyStarred,
+                      onTap: () => setState(() {
+                        _onlyStarred = !_onlyStarred;
+                      }),
                     ),
                     ...subjects.map((sub) {
                       return _buildChip(
                         label: sub.name,
                         isSelected: _selectedSubjectId == sub.id,
-                        onTap: () => setState(() => _selectedSubjectId = sub.id),
+                        onTap: () => setState(() {
+                          _selectedSubjectId =
+                              _selectedSubjectId == sub.id ? null : sub.id;
+                        }),
                       );
                     }),
                   ],
@@ -133,24 +150,33 @@ class _DeckListScreenState extends State<DeckListScreen> {
 
               // Deck List or Empty State
               Expanded(
-                child: filteredDecks.isEmpty
-                    ? EmptyStateView(
-                        icon: Icons.style_outlined,
-                        title: 'No Decks Found',
-                        description: _searchQuery.isNotEmpty
-                            ? 'No decks match "$_searchQuery".'
-                            : 'Create a subject and your first flashcard deck to start studying.',
-                        ctaLabel: 'Create New Deck',
-                        onCtaPressed: () => _openCreateDeckDialog(context),
-                      )
-                    : ListView.builder(
-                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                        itemCount: filteredDecks.length,
-                        itemBuilder: (context, index) {
-                          final deck = filteredDecks[index];
-                          return _buildDeckCard(context, deck);
-                        },
-                      ),
+                child: RefreshIndicator(
+                  color: AppColors.primary,
+                  backgroundColor: AppColors.bgSurface1,
+                  onRefresh: () => repo.fetchAllFromCloud(),
+                  child: filteredDecks.isEmpty
+                      ? EmptyStateView(
+                          icon: _onlyStarred ? Icons.star_outline_rounded : Icons.style_outlined,
+                          title: _onlyStarred ? 'No Starred Decks Yet' : 'No Decks Found',
+                          description: _onlyStarred
+                              ? 'Tap the star icon on any deck to pin it to the top of your library.'
+                              : (_searchQuery.isNotEmpty
+                                  ? 'No decks match "$_searchQuery".'
+                                  : 'Create a subject and your first flashcard deck to start studying.'),
+                          ctaLabel: _onlyStarred ? 'Show All Decks' : 'Create New Deck',
+                          onCtaPressed: _onlyStarred
+                              ? () => setState(() => _onlyStarred = false)
+                              : () => _openCreateDeckDialog(context),
+                        )
+                      : ListView.builder(
+                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                          itemCount: filteredDecks.length,
+                          itemBuilder: (context, index) {
+                            final deck = filteredDecks[index];
+                            return _buildDeckCard(context, deck);
+                          },
+                        ),
+                ),
               ),
             ],
           ),
@@ -196,7 +222,11 @@ class _DeckListScreenState extends State<DeckListScreen> {
       decoration: BoxDecoration(
         color: AppColors.bgCard,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.borderSubtle),
+        border: Border.all(
+          color: deck.isFavorite
+              ? Colors.amber.withValues(alpha: 0.45)
+              : AppColors.borderSubtle,
+        ),
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
@@ -228,7 +258,22 @@ class _DeckListScreenState extends State<DeckListScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(deck.title, style: AppTypography.titleMedium),
+                        Row(
+                          children: [
+                            Flexible(
+                              child: Text(
+                                deck.title,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: AppTypography.titleMedium,
+                              ),
+                            ),
+                            if (deck.isFavorite) ...[
+                              const SizedBox(width: 6),
+                              const Icon(Icons.push_pin_rounded, size: 14, color: Colors.amber),
+                            ],
+                          ],
+                        ),
                         const SizedBox(height: 4),
                         Text(
                           deck.description.isEmpty ? 'No description provided.' : deck.description,
@@ -244,8 +289,21 @@ class _DeckListScreenState extends State<DeckListScreen> {
                       deck.isFavorite ? Icons.star_rounded : Icons.star_outline_rounded,
                       color: deck.isFavorite ? Colors.amber : AppColors.textMuted,
                     ),
+                    tooltip: deck.isFavorite ? 'Remove from Starred' : 'Pin to Top (Starred)',
                     onPressed: () {
+                      final next = !deck.isFavorite;
                       StudyRepository.instance.toggleFavoriteDeck(deck.id);
+                      if (next) {
+                        ToastFeedback.showSuccess(
+                          context,
+                          '"${deck.title}" pinned to top of decks!',
+                        );
+                      } else {
+                        ToastFeedback.showInfo(
+                          context,
+                          '"${deck.title}" unpinned.',
+                        );
+                      }
                     },
                   ),
                   IconButton(
@@ -265,33 +323,51 @@ class _DeckListScreenState extends State<DeckListScreen> {
                 ],
               ),
               const SizedBox(height: 16),
-              // Progress and metrics
+              // Progress and metrics (Clearly distinguishes New Cards vs Scheduled Due Cards)
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    '${deck.totalCards} cards',
+                    '${deck.totalCards} cards • ${deck.masteredCount} mastered',
                     style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary),
                   ),
-                  if (deck.dueCardsCount > 0)
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: AppColors.dangerSurface,
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        '${deck.dueCardsCount} due today',
-                        style: AppTypography.badge.copyWith(color: AppColors.danger),
-                      ),
-                    )
-                  else
-                    Text(
-                      deck.totalCards == 0 ? 'Add cards to start' : 'All caught up!',
-                      style: AppTypography.badge.copyWith(
-                        color: deck.totalCards == 0 ? AppColors.textMuted : AppColors.success,
-                      ),
-                    ),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (deck.newCardsCount > 0)
+                        Container(
+                          margin: EdgeInsets.only(right: deck.scheduledDueCount > 0 ? 6 : 0),
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF083344),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            '${deck.newCardsCount} new',
+                            style: AppTypography.badge.copyWith(color: const Color(0xFF67E8F9)),
+                          ),
+                        ),
+                      if (deck.scheduledDueCount > 0)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: AppColors.dangerSurface,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            '${deck.scheduledDueCount} due today',
+                            style: AppTypography.badge.copyWith(color: AppColors.danger),
+                          ),
+                        ),
+                      if (deck.newCardsCount == 0 && deck.scheduledDueCount == 0)
+                        Text(
+                          deck.totalCards == 0 ? 'Add cards to start' : 'All caught up!',
+                          style: AppTypography.badge.copyWith(
+                            color: deck.totalCards == 0 ? AppColors.textMuted : AppColors.success,
+                          ),
+                        ),
+                    ],
+                  ),
                 ],
               ),
               const SizedBox(height: 8),

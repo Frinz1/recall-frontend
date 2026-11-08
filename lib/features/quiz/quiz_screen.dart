@@ -49,6 +49,20 @@ class _QuizScreenState extends State<QuizScreen> {
       }
     }
 
+    const fallbackDistractors = <String>[
+      'Uses a stateless broadcast mechanism without acknowledgment or flow control.',
+      'Requires O(n²) sequential traversal across unindexed heap blocks.',
+      'Relies on symmetric key exchange over an unencrypted transport channel.',
+      'Executes synchronously on the main thread while blocking I/O interrupts.',
+      'Stores volatile state in L1 cache without write-ahead transaction logging.',
+    ];
+    for (final fallback in fallbackDistractors) {
+      if (options.length >= 4) break;
+      if (!options.contains(fallback)) {
+        options.add(fallback);
+      }
+    }
+
     // Shuffle options
     options.shuffle(Random());
     _currentOptions = options;

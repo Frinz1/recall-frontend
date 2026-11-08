@@ -460,4 +460,28 @@ class AuthService extends ChangeNotifier {
     await StudyRepository.instance.clearLocalState();
     notifyListeners();
   }
+
+  Future<bool> updateDisplayName(String newName) async {
+    final trimmed = newName.trim();
+    if (trimmed.length < 2 || _currentUser == null) return false;
+
+    final updatedLocal = UserProfile(
+      id: _currentUser!.id,
+      email: _currentUser!.email,
+      name: trimmed,
+    );
+    _currentUser = updatedLocal;
+    notifyListeners();
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_userKey, jsonEncode(updatedLocal.toJson()));
+    } catch (_) {}
+
+    if (ApiClient.instance.isAuthenticated) {
+      final res = await ApiClient.instance.patch('/auth/profile', {'name': trimmed});
+      return res.success;
+    }
+    return true;
+  }
 }
