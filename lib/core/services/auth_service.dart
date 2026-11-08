@@ -26,9 +26,11 @@ class AuthService extends ChangeNotifier {
   AuthService._internal();
 
   UserProfile? _currentUser;
+  String? _refreshToken;
   bool _isLoading = false;
 
   UserProfile? get currentUser => _currentUser;
+  String? get refreshToken => _refreshToken;
   bool get isAuthenticated => _currentUser != null;
   bool get isLoading => _isLoading;
 
@@ -44,11 +46,15 @@ class AuthService extends ChangeNotifier {
     _isLoading = false;
 
     if (res.success && res.data != null) {
-      final token = res.data['token'];
+      final token = res.data['rc_at'] ?? res.data['token'];
+      final rt = res.data['rc_rt'] ?? res.data['refreshToken'];
       final userMap = res.data['user'];
 
       if (token != null) {
         ApiClient.instance.setAuthToken(token.toString());
+      }
+      if (rt != null) {
+        _refreshToken = rt.toString();
       }
       if (userMap != null) {
         _currentUser = UserProfile.fromJson(Map<String, dynamic>.from(userMap));
@@ -84,11 +90,15 @@ class AuthService extends ChangeNotifier {
     _isLoading = false;
 
     if (res.success && res.data != null) {
-      final token = res.data['token'];
+      final token = res.data['rc_at'] ?? res.data['token'];
+      final rt = res.data['rc_rt'] ?? res.data['refreshToken'];
       final userMap = res.data['user'];
 
       if (token != null) {
         ApiClient.instance.setAuthToken(token.toString());
+      }
+      if (rt != null) {
+        _refreshToken = rt.toString();
       }
       if (userMap != null) {
         _currentUser = UserProfile.fromJson(Map<String, dynamic>.from(userMap));
@@ -103,9 +113,16 @@ class AuthService extends ChangeNotifier {
     }
   }
 
-  void logout() {
+  Future<void> logout() async {
+    if (_refreshToken != null) {
+      // Best-effort remote revocation
+      try {
+        await ApiClient.instance.post('/auth/logout', {'rc_rt': _refreshToken});
+      } catch (_) {}
+    }
     ApiClient.instance.clearAuthToken();
     _currentUser = null;
+    _refreshToken = null;
     notifyListeners();
   }
 }
