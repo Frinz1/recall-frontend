@@ -193,12 +193,25 @@ class _AuthScreenState extends State<AuthScreen> {
 
   Future<void> _handleGoogleSignIn() async {
     FocusScope.of(context).unfocus();
-    final result = await AuthService.instance.signInWithGoogle();
+    final result = await AuthService.instance.signInWithGoogle(isLogin: _isLogin);
     if (!mounted) return;
 
     if (result.success) {
-      ToastFeedback.showSuccess(context, result.message);
-      _navigateOnAuthenticated();
+      if (result.requiresOtpVerification) {
+        setState(() {
+          if (result.pendingEmail != null) {
+            _emailController.text = result.pendingEmail!;
+          }
+          _isAwaitingOtp = true;
+          _otpError = null;
+          _otpController.clear();
+        });
+        _startResendCooldown();
+        ToastFeedback.showInfo(context, result.message);
+      } else {
+        ToastFeedback.showSuccess(context, result.message);
+        _navigateOnAuthenticated();
+      }
     } else if (result.message != 'Google Sign-In was cancelled.') {
       ToastFeedback.showError(context, result.message);
     }

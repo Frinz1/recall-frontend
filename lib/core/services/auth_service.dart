@@ -37,16 +37,16 @@ class UserProfile {
 class AuthResult {
   final bool success;
   final String message;
-  final String? otpPreview;
   final bool deliveredViaSmtp;
-  final bool requiresAccountPickerFallback;
+  final bool requiresOtpVerification;
+  final String? pendingEmail;
 
   const AuthResult({
     required this.success,
     required this.message,
-    this.otpPreview,
     this.deliveredViaSmtp = false,
-    this.requiresAccountPickerFallback = false,
+    this.requiresOtpVerification = false,
+    this.pendingEmail,
   });
 }
 
@@ -228,19 +228,18 @@ class AuthService extends ChangeNotifier {
     _isLoading = false;
 
     if (res.success) {
-      String? otpPreview;
       bool deliveredViaSmtp = false;
       if (res.data is Map) {
         final dataMap = Map<String, dynamic>.from(res.data as Map);
-        otpPreview = dataMap['otpPreview']?.toString();
         deliveredViaSmtp = dataMap['deliveredViaSmtp'] == true;
       }
       notifyListeners();
       return AuthResult(
         success: true,
         message: res.message ?? 'Verification code sent to your email.',
-        otpPreview: otpPreview,
         deliveredViaSmtp: deliveredViaSmtp,
+        requiresOtpVerification: true,
+        pendingEmail: email.trim().toLowerCase(),
       );
     }
 
@@ -293,9 +292,6 @@ class AuthService extends ChangeNotifier {
     return AuthResult(success: false, message: errorMsg);
   }
 
-  static const MethodChannel _googlePickerChannel =
-      MethodChannel('com.example.recall/google_account_picker');
-
   static String _formatDisplayNameFromEmail(String email) {
     final localPart = email.split('@').first;
     final words = localPart
@@ -315,74 +311,47 @@ class AuthService extends ChangeNotifier {
   }
 
   Future<AuthResult> signInWithGoogle({
-    String? selectedEmail,
-    String? selectedName,
+    bool isLogin = true,
   }) async {
     _isLoading = true;
     _lastErrorMessage = null;
     notifyListeners();
 
-    String? googleEmail = selectedEmail;
-    String? googleName = selectedName;
+    String? googleEmail;
+    String? googleName;
     String? googleId;
 
-    if (googleEmail == null) {
-      // On Android, use the native OS AccountManager Google Account chooser first
-      // so clicking any existing Google account on the phone works immediately
-      // without failing on SHA-1 / Google Cloud Console OAuth restrictions.
-      if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
-        try {
-          final picked = await _googlePickerChannel.invokeMethod<dynamic>('pickGoogleAccount');
-          if (picked is Map && picked['email'] != null) {
-            googleEmail = picked['email'].toString().trim();
-            googleName = _formatDisplayNameFromEmail(googleEmail);
-          }
-        } on PlatformException catch (e) {
-          if (e.code == 'CANCELLED') {
-            _isLoading = false;
-            notifyListeners();
-            return const AuthResult(
-              success: false,
-              message: 'Google Sign-In was cancelled.',
-            );
-          }
-        } catch (_) {
-          // Fall through to GoogleSignIn if channel unavailable
-        }
+    try {
+      final googleSignIn = GoogleSignIn(scopes: ['email', 'profile']);
+      await googleSignIn.signOut().catchError((_) => null);
+      final account = await googleSignIn.signIn();
+      if (account == null) {
+        _isLoading = false;
+        notifyListeners();
+        return const AuthResult(
+          success: false,
+          message: 'Google Sign-In was cancelled.',
+        );
       }
-
-      if (googleEmail == null) {
-        try {
-          final googleSignIn = GoogleSignIn(scopes: ['email', 'profile']);
-          await googleSignIn.signOut().catchError((_) => null);
-          final account = await googleSignIn.signIn();
-          if (account == null) {
-            _isLoading = false;
-            notifyListeners();
-            return const AuthResult(
-              success: false,
-              message: 'Google Sign-In was cancelled.',
-            );
-          }
-          googleEmail = account.email;
-          googleName = account.displayName?.trim().isNotEmpty == true
-              ? account.displayName!
-              : _formatDisplayNameFromEmail(account.email);
-          googleId = account.id;
-        } catch (e) {
-          _isLoading = false;
-          notifyListeners();
-          return const AuthResult(
-            success: false,
-            message: 'Unable to open Google Account chooser on this device.',
-          );
-        }
-      }
+      googleEmail = account.email.trim().toLowerCase();
+      googleName = account.displayName?.trim().isNotEmpty == true
+          ? account.displayName!.trim()
+          : _formatDisplayNameFromEmail(account.email);
+      googleId = account.id;
+    } catch (e) {
+      _isLoading = false;
+      notifyListeners();
+      return const AuthResult(
+        success: false,
+        message:
+            'Google Sign-In requires your Android OAuth Client ID (SHA-1) to be registered in Google Cloud Console.',
+      );
     }
 
     final res = await ApiClient.instance.post('/auth/google', {
-      'email': googleEmail.trim().toLowerCase(),
-      'name': (googleName ?? googleEmail.split('@').first).trim(),
+      'email': googleEmail,
+      'name': googleName,
+      'mode': isLogin ? 'login' : 'register',
       if (googleId != null) 'googleId': googleId,
     });
 
@@ -390,6 +359,18 @@ class AuthService extends ChangeNotifier {
 
     if (res.success && res.data is Map) {
       final dataMap = Map<String, dynamic>.from(res.data as Map);
+
+      if (dataMap['requiresOtp'] == true) {
+        notifyListeners();
+        return AuthResult(
+          success: true,
+          message: res.message ?? 'Verification code sent to $googleEmail.',
+          requiresOtpVerification: true,
+          pendingEmail: googleEmail,
+          deliveredViaSmtp: dataMap['deliveredViaSmtp'] == true,
+        );
+      }
+
       final token = dataMap['rc_at']?.toString();
       final rt = dataMap['rc_rt']?.toString();
       final userMap = dataMap['user'];
