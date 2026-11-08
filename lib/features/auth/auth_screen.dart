@@ -29,7 +29,6 @@ class _AuthScreenState extends State<AuthScreen> {
   String? _emailError;
   String? _passwordError;
   String? _otpError;
-  String? _devOtpPreview;
 
   int _resendCooldown = 0;
   Timer? _resendTimer;
@@ -138,7 +137,6 @@ class _AuthScreenState extends State<AuthScreen> {
           _isAwaitingOtp = true;
           _otpError = null;
           _otpController.clear();
-          _devOtpPreview = otpResult.otpPreview;
         });
         _startResendCooldown();
         ToastFeedback.showInfo(context, otpResult.message);
@@ -184,7 +182,6 @@ class _AuthScreenState extends State<AuthScreen> {
 
     if (otpResult.success) {
       setState(() {
-        _devOtpPreview = otpResult.otpPreview;
         _otpError = null;
       });
       _startResendCooldown();
@@ -202,255 +199,9 @@ class _AuthScreenState extends State<AuthScreen> {
     if (result.success) {
       ToastFeedback.showSuccess(context, result.message);
       _navigateOnAuthenticated();
-    } else if (result.requiresAccountPickerFallback) {
-      _showGoogleAccountPickerSheet();
     } else if (result.message != 'Google Sign-In was cancelled.') {
       ToastFeedback.showError(context, result.message);
     }
-  }
-
-  Future<void> _showGoogleAccountPickerSheet() async {
-    final customEmailCtrl = TextEditingController();
-    final customNameCtrl = TextEditingController();
-    bool showCustomInput = false;
-    String? sheetError;
-
-    final presetAccounts = [
-      {'name': 'Charles Biasora', 'email': 'charles.biasora@gmail.com'},
-      {'name': 'Alex Rivera', 'email': 'alex@recall.app'},
-    ];
-
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: AppColors.bgSurface1,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (sheetCtx) {
-        return StatefulBuilder(
-          builder: (ctx, setSheetState) {
-            Future<void> selectGoogleAccount(String email, String name) async {
-              Navigator.of(sheetCtx).pop();
-              final res = await AuthService.instance.signInWithGoogle(
-                selectedEmail: email,
-                selectedName: name,
-              );
-              if (!mounted) return;
-              if (res.success) {
-                ToastFeedback.showSuccess(context, res.message);
-                _navigateOnAuthenticated();
-              } else {
-                ToastFeedback.showError(context, res.message);
-              }
-            }
-
-            return Padding(
-              padding: EdgeInsets.only(
-                left: 24,
-                right: 24,
-                top: 20,
-                bottom: MediaQuery.of(ctx).viewInsets.bottom + 28,
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Center(
-                    child: Container(
-                      width: 40,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: AppColors.borderSubtle,
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  Row(
-                    children: [
-                      _buildGoogleLogo(),
-                      const SizedBox(width: 12),
-                      const Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Sign in with Google',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.textPrimary,
-                              ),
-                            ),
-                            SizedBox(height: 2),
-                            Text(
-                              'Choose an account to continue to Recall',
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: AppColors.textSecondary,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 18),
-                  const Divider(color: AppColors.borderSubtle, height: 1),
-                  const SizedBox(height: 12),
-                  if (!showCustomInput) ...[
-                    ...presetAccounts.map((acc) {
-                      final email = acc['email']!;
-                      final name = acc['name']!;
-                      return InkWell(
-                        onTap: () => selectGoogleAccount(email, name),
-                        borderRadius: BorderRadius.circular(14),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
-                          child: Row(
-                            children: [
-                              CircleAvatar(
-                                radius: 20,
-                                backgroundColor: AppColors.primary.withValues(alpha: 0.18),
-                                child: Text(
-                                  name[0].toUpperCase(),
-                                  style: const TextStyle(
-                                    color: AppColors.primary,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 14),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      name,
-                                      style: const TextStyle(
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.w600,
-                                        color: AppColors.textPrimary,
-                                      ),
-                                    ),
-                                    Text(
-                                      email,
-                                      style: const TextStyle(
-                                        fontSize: 13,
-                                        color: AppColors.textSecondary,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const Icon(
-                                Icons.chevron_right_rounded,
-                                color: AppColors.textSecondary,
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    }),
-                    InkWell(
-                      onTap: () => setSheetState(() => showCustomInput = true),
-                      borderRadius: BorderRadius.circular(14),
-                      child: const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-                        child: Row(
-                          children: [
-                            CircleAvatar(
-                              radius: 20,
-                              backgroundColor: AppColors.bgSurface2,
-                              child: Icon(
-                                Icons.person_add_alt_1_rounded,
-                                color: AppColors.textPrimary,
-                                size: 20,
-                              ),
-                            ),
-                            SizedBox(width: 14),
-                            Text(
-                              'Use another Google account',
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.textPrimary,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ] else ...[
-                    const SizedBox(height: 6),
-                    TextField(
-                      controller: customNameCtrl,
-                      style: const TextStyle(color: AppColors.textPrimary),
-                      decoration: InputDecoration(
-                        labelText: 'Your Name',
-                        hintText: 'e.g. Juan Dela Cruz',
-                        filled: true,
-                        fillColor: AppColors.bgCanvas,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: customEmailCtrl,
-                      keyboardType: TextInputType.emailAddress,
-                      style: const TextStyle(color: AppColors.textPrimary),
-                      decoration: InputDecoration(
-                        labelText: 'Google Email (@gmail.com)',
-                        hintText: 'yourname@gmail.com',
-                        errorText: sheetError,
-                        filled: true,
-                        fillColor: AppColors.bgCanvas,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 48,
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primary,
-                          foregroundColor: AppColors.bgCanvas,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        onPressed: () {
-                          final email = customEmailCtrl.text.trim();
-                          final name = customNameCtrl.text.trim();
-                          if (!_emailRegex.hasMatch(email)) {
-                            setSheetState(() => sheetError = 'Please enter a valid Google email.');
-                            return;
-                          }
-                          selectGoogleAccount(
-                            email,
-                            name.isNotEmpty ? name : email.split('@').first,
-                          );
-                        },
-                        child: const Text(
-                          'Continue with Google Account',
-                          style: TextStyle(fontWeight: FontWeight.w700),
-                        ),
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            );
-          },
-        );
-      },
-    );
   }
 
   void _navigateOnAuthenticated() {
@@ -558,68 +309,7 @@ class _AuthScreenState extends State<AuthScreen> {
             color: AppColors.textSecondary,
           ),
         ),
-        const SizedBox(height: 20),
-
-        // Helpful Dev OTP Banner if SMTP is not yet configured in .env
-        if (_devOtpPreview != null) ...[
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: AppColors.bgSurface1,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: AppColors.primary.withValues(alpha: 0.5)),
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.key_rounded, color: AppColors.primary, size: 20),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'INSTANT OTP CODE (DEV PREVIEW)',
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 0.8,
-                          color: AppColors.primary,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        _devOtpPreview!,
-                        style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 4,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                TextButton(
-                  onPressed: () {
-                    setState(() {
-                      _otpController.text = _devOtpPreview!;
-                      _otpError = null;
-                    });
-                  },
-                  child: const Text(
-                    'Auto-Fill',
-                    style: TextStyle(
-                      color: AppColors.primary,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 20),
-        ],
+        const SizedBox(height: 24),
 
         _buildInputLabel('6-DIGIT VERIFICATION CODE'),
         Container(

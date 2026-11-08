@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../network/api_client.dart';
@@ -292,6 +293,27 @@ class AuthService extends ChangeNotifier {
     return AuthResult(success: false, message: errorMsg);
   }
 
+  static const MethodChannel _googlePickerChannel =
+      MethodChannel('com.example.recall/google_account_picker');
+
+  static String _formatDisplayNameFromEmail(String email) {
+    final localPart = email.split('@').first;
+    final words = localPart
+        .replaceAll(RegExp(r'[._\-]+'), ' ')
+        .replaceAll(RegExp(r'\d+'), '')
+        .trim()
+        .split(RegExp(r'\s+'))
+        .where((w) => w.isNotEmpty)
+        .map((w) => w[0].toUpperCase() + w.substring(1).toLowerCase())
+        .toList();
+    if (words.isEmpty) {
+      return localPart.isNotEmpty
+          ? localPart[0].toUpperCase() + localPart.substring(1)
+          : 'Recall Scholar';
+    }
+    return words.join(' ');
+  }
+
   Future<AuthResult> signInWithGoogle({
     String? selectedEmail,
     String? selectedName,
@@ -305,31 +327,56 @@ class AuthService extends ChangeNotifier {
     String? googleId;
 
     if (googleEmail == null) {
-      try {
-        final googleSignIn = GoogleSignIn(scopes: ['email', 'profile']);
-        await googleSignIn.signOut().catchError((_) => null);
-        final account = await googleSignIn.signIn();
-        if (account == null) {
+      // On Android, use the native OS AccountManager Google Account chooser first
+      // so clicking any existing Google account on the phone works immediately
+      // without failing on SHA-1 / Google Cloud Console OAuth restrictions.
+      if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+        try {
+          final picked = await _googlePickerChannel.invokeMethod<dynamic>('pickGoogleAccount');
+          if (picked is Map && picked['email'] != null) {
+            googleEmail = picked['email'].toString().trim();
+            googleName = _formatDisplayNameFromEmail(googleEmail);
+          }
+        } on PlatformException catch (e) {
+          if (e.code == 'CANCELLED') {
+            _isLoading = false;
+            notifyListeners();
+            return const AuthResult(
+              success: false,
+              message: 'Google Sign-In was cancelled.',
+            );
+          }
+        } catch (_) {
+          // Fall through to GoogleSignIn if channel unavailable
+        }
+      }
+
+      if (googleEmail == null) {
+        try {
+          final googleSignIn = GoogleSignIn(scopes: ['email', 'profile']);
+          await googleSignIn.signOut().catchError((_) => null);
+          final account = await googleSignIn.signIn();
+          if (account == null) {
+            _isLoading = false;
+            notifyListeners();
+            return const AuthResult(
+              success: false,
+              message: 'Google Sign-In was cancelled.',
+            );
+          }
+          googleEmail = account.email;
+          googleName = account.displayName?.trim().isNotEmpty == true
+              ? account.displayName!
+              : _formatDisplayNameFromEmail(account.email);
+          googleId = account.id;
+        } catch (e) {
           _isLoading = false;
           notifyListeners();
           return const AuthResult(
             success: false,
-            message: 'Google Sign-In was cancelled.',
+            message: 'Unable to open Google Account chooser on this device.',
           );
         }
-        googleEmail = account.email;
-        googleName = account.displayName?.trim().isNotEmpty == true
-            ? account.displayName!
-            : account.email.split('@').first;
-        googleId = account.id;
-      } catch (_) {
-        _isLoading = false;
-        notifyListeners();
-        return const AuthResult(
-          success: false,
-          message: 'Choose a Google account to continue.',
-          requiresAccountPickerFallback: true,
-        );
       }
     }
 
