@@ -25,8 +25,9 @@ class DashboardScreen extends StatelessWidget {
         // Recommend deck with most due cards
         Deck? priorityDeck;
         if (decks.isNotEmpty) {
-          priorityDeck = List<Deck>.from(decks)
+          final sorted = List<Deck>.from(decks)
             ..sort((a, b) => b.dueCardsCount.compareTo(a.dueCardsCount));
+          priorityDeck = sorted.first;
         }
 
         return Scaffold(
@@ -76,7 +77,7 @@ class DashboardScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Daily Readiness Hero Banner
-                _buildHeroBanner(context, totalDue, priorityDeck?.first),
+                _buildHeroBanner(context, totalDue, priorityDeck),
 
                 const SizedBox(height: 24),
 

@@ -4,7 +4,6 @@ import 'core/theme/app_colors.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/app_typography.dart';
 import 'features/analytics/analytics_screen.dart';
-import 'features/auth/auth_screen.dart';
 import 'features/dashboard/dashboard_screen.dart';
 import 'features/deck/deck_list_screen.dart';
 

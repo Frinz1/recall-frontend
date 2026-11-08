@@ -14,9 +14,9 @@ class UserProfile {
 
   factory UserProfile.fromJson(Map<String, dynamic> json) {
     return UserProfile(
-      id: json['id'] ?? '',
-      email: json['email'] ?? '',
-      name: json['name'] ?? '',
+      id: json['id']?.toString() ?? '',
+      email: json['email']?.toString() ?? '',
+      name: json['name']?.toString() ?? '',
     );
   }
 }
@@ -56,7 +56,7 @@ class AuthService extends ChangeNotifier {
       if (rt != null) {
         _refreshToken = rt.toString();
       }
-      if (userMap != null) {
+      if (userMap != null && userMap is Map) {
         _currentUser = UserProfile.fromJson(Map<String, dynamic>.from(userMap));
       }
       notifyListeners();
@@ -100,7 +100,7 @@ class AuthService extends ChangeNotifier {
       if (rt != null) {
         _refreshToken = rt.toString();
       }
-      if (userMap != null) {
+      if (userMap != null && userMap is Map) {
         _currentUser = UserProfile.fromJson(Map<String, dynamic>.from(userMap));
       }
       notifyListeners();
