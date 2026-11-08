@@ -1,0 +1,38 @@
+# Flutter / Dart dependencies and tools
+.dart_tool/
+.packages
+.pub-cache/
+.pub/
+build/
+
+# Android specific
+android/**/gradle-wrapper.jar
+android/.gradle
+android/captures/
+android/gradlew
+android/gradlew.bat
+android/local.properties
+android/**/GeneratedPluginRegistrant.java
+
+# iOS / macOS specific
+ios/Flutter/App.framework
+ios/Flutter/Flutter.framework
+ios/Flutter/Generated.xcconfig
+ios/Flutter/app.flx
+ios/Flutter/app.zip
+ios/Flutter/flutter_assets/
+ios/ServiceDefinitions.json
+ios/Runner/GeneratedPluginRegistrant.h
+ios/Runner/GeneratedPluginRegistrant.m
+**/Pods/
+**/.symlinks/
+
+# Environment files
+.env
+*.env
+
+# OS / Editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
