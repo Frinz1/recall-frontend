@@ -17,260 +17,143 @@ class SettingsScreen extends StatelessWidget {
       builder: (context, _) {
         final user = AuthService.instance.currentUser;
         final repo = StudyRepository.instance;
-        final lastSyncText = repo.lastSyncedAt != null
-            ? 'Last synced at ${DateFormat('h:mm a').format(repo.lastSyncedAt!)}'
-            : 'Connected to Recall Cloud';
+        final syncSubtitle = repo.lastSyncedAt != null
+            ? DateFormat('h:mm a').format(repo.lastSyncedAt!)
+            : 'Synced';
 
         return Scaffold(
           appBar: AppBar(
-            title: const Text('Settings & Preferences', style: AppTypography.titleLarge),
+            title: const Text('Settings', style: AppTypography.titleLarge),
           ),
           body: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // 1. Account & Profile Card
-                const Text('ACCOUNT', style: AppTypography.labelMedium),
-                const SizedBox(height: 10),
+                // 1. Account Header Card
+                _buildSectionLabel('PROFILE & ACCOUNT'),
+                const SizedBox(height: 8),
                 Container(
-                  padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
                     color: AppColors.bgCard,
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(18),
                     border: Border.all(color: AppColors.borderSubtle),
                   ),
-                  child: Row(
-                    children: [
-                      CircleAvatar(
-                        backgroundColor: AppColors.primary,
-                        radius: 24,
-                        child: Text(
-                          (user != null && user.name.isNotEmpty)
-                              ? user.name[0].toUpperCase()
-                              : 'R',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w800,
-                            fontSize: 18,
-                            color: AppColors.bgCanvas,
-                          ),
+                  child: ListTile(
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    leading: CircleAvatar(
+                      backgroundColor: AppColors.primary,
+                      radius: 22,
+                      child: Text(
+                        (user != null && user.name.isNotEmpty)
+                            ? user.name[0].toUpperCase()
+                            : 'R',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 17,
+                          color: AppColors.textInverse,
                         ),
                       ),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              user?.name ?? 'Recall Learner',
-                              style: AppTypography.titleMedium,
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              user?.email ?? 'Signed in',
-                              style: AppTypography.bodySmall,
-                            ),
-                          ],
+                    ),
+                    title: Text(
+                      user?.name ?? 'Recall Learner',
+                      style: AppTypography.titleMedium,
+                    ),
+                    subtitle: Text(
+                      user?.email ?? 'Signed in',
+                      style: AppTypography.bodySmall,
+                    ),
+                    trailing: TextButton(
+                      onPressed: () => _openEditNameDialog(context, user?.name ?? ''),
+                      child: const Text(
+                        'Edit',
+                        style: TextStyle(
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
-                      IconButton(
-                        icon: const Icon(Icons.edit_outlined, size: 20, color: AppColors.primary),
-                        tooltip: 'Edit Display Name',
-                        onPressed: () => _openEditNameDialog(context, user?.name ?? ''),
-                      ),
-                    ],
+                    ),
                   ),
                 ),
 
-                const SizedBox(height: 24),
+                const SizedBox(height: 22),
 
-                // 2. Study & Spaced Repetition Preferences
-                const Text('STUDY PREFERENCES', style: AppTypography.labelMedium),
-                const SizedBox(height: 10),
+                // 2. Study & Spaced Repetition Group
+                _buildSectionLabel('STUDY & SPACED REPETITION'),
+                const SizedBox(height: 8),
                 Container(
-                  padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
                     color: AppColors.bgCard,
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(18),
                     border: Border.all(color: AppColors.borderSubtle),
                   ),
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text('Daily Review Goal', style: AppTypography.titleMedium),
-                                SizedBox(height: 2),
-                                Text(
-                                  'Target number of flashcards to review each day.',
-                                  style: AppTypography.bodySmall,
-                                ),
-                              ],
-                            ),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: AppColors.primary.withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              '${repo.dailyGoalCards} cards/day',
-                              style: AppTypography.badge.copyWith(color: AppColors.primary),
-                            ),
-                          ),
-                        ],
+                      _buildNavRow(
+                        icon: Icons.flag_rounded,
+                        iconColor: AppColors.primary,
+                        title: 'Daily Review Goal',
+                        valueText: '${repo.dailyGoalCards} cards/day',
+                        onTap: () => _openDailyGoalSheet(context, repo.dailyGoalCards),
                       ),
-                      const SizedBox(height: 12),
-                      Wrap(
-                        spacing: 8,
-                        children: [10, 20, 30, 50].map((goal) {
-                          final selected = repo.dailyGoalCards == goal;
-                          return ChoiceChip(
-                            label: Text(
-                              '$goal cards',
-                              style: AppTypography.badge.copyWith(
-                                color: selected ? AppColors.bgCanvas : AppColors.textSecondary,
-                              ),
-                            ),
-                            selected: selected,
-                            onSelected: (_) {
-                              repo.setDailyGoalCards(goal);
-                              ToastFeedback.showInfo(
-                                context,
-                                'Daily review goal set to $goal cards.',
-                              );
-                            },
-                            backgroundColor: AppColors.bgSurface2,
-                            selectedColor: AppColors.primary,
-                            showCheckmark: false,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
-                              side: BorderSide(
-                                color: selected ? AppColors.primary : AppColors.borderSubtle,
-                              ),
-                            ),
-                          );
-                        }).toList(),
-                      ),
-                      const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 12),
-                        child: Divider(color: AppColors.borderSubtle, height: 1),
-                      ),
-                      SwitchListTile(
-                        contentPadding: EdgeInsets.zero,
-                        activeThumbColor: AppColors.primary,
-                        title: const Text('Shuffle Cards in Study Sessions',
-                            style: AppTypography.titleMedium),
-                        subtitle: const Text(
-                          'Randomize card order so you recall concepts rather than sequence.',
-                          style: AppTypography.bodySmall,
-                        ),
+                      const Divider(color: AppColors.borderSubtle, height: 1, indent: 56),
+                      _buildSwitchRow(
+                        icon: Icons.shuffle_rounded,
+                        iconColor: AppColors.accentCyan,
+                        title: 'Shuffle Study Cards',
+                        subtitle: 'Randomize card order during sessions',
                         value: repo.shuffleStudyCards,
-                        onChanged: (val) {
-                          repo.setShuffleStudyCards(val);
-                        },
+                        onChanged: (val) => repo.setShuffleStudyCards(val),
                       ),
-                      const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 8),
-                        child: Divider(color: AppColors.borderSubtle, height: 1),
-                      ),
-                      SwitchListTile(
-                        contentPadding: EdgeInsets.zero,
-                        activeThumbColor: AppColors.primary,
-                        title: const Text('Include New Cards in Daily Smart Review',
-                            style: AppTypography.titleMedium),
-                        subtitle: const Text(
-                          'Automatically include unreviewed New Cards alongside scheduled due cards.',
-                          style: AppTypography.bodySmall,
-                        ),
+                      const Divider(color: AppColors.borderSubtle, height: 1, indent: 56),
+                      _buildSwitchRow(
+                        icon: Icons.auto_awesome_rounded,
+                        iconColor: AppColors.accentPurple,
+                        title: 'Include New Cards in Due',
+                        subtitle: 'Mix unreviewed cards into Smart Review',
                         value: repo.includeNewInDue,
-                        onChanged: (val) {
-                          repo.setIncludeNewInDue(val);
-                        },
+                        onChanged: (val) => repo.setIncludeNewInDue(val),
                       ),
                     ],
                   ),
                 ),
 
-                const SizedBox(height: 24),
+                const SizedBox(height: 22),
 
-                // 3. Cloud Sync & Data Management
-                const Text('CLOUD & DATA', style: AppTypography.labelMedium),
-                const SizedBox(height: 10),
+                // 3. Cloud & Study Data Group
+                _buildSectionLabel('CLOUD & DATA'),
+                const SizedBox(height: 8),
                 Container(
                   decoration: BoxDecoration(
                     color: AppColors.bgCard,
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(18),
                     border: Border.all(color: AppColors.borderSubtle),
                   ),
                   child: Column(
                     children: [
-                      ListTile(
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                        leading: Container(
-                          width: 40,
-                          height: 40,
-                          decoration: BoxDecoration(
-                            color: AppColors.primary.withValues(alpha: 0.14),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: repo.isSyncing
-                              ? const Padding(
-                                  padding: EdgeInsets.all(10),
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: AppColors.primary,
-                                  ),
-                                )
-                              : const Icon(Icons.cloud_done_outlined, color: AppColors.primary),
-                        ),
-                        title: const Text('Recall Cloud Sync', style: AppTypography.titleMedium),
-                        subtitle: Text(lastSyncText, style: AppTypography.bodySmall),
-                        trailing: TextButton(
-                          onPressed: repo.isSyncing
-                              ? null
-                              : () async {
-                                  await repo.fetchAllFromCloud();
-                                  if (context.mounted) {
-                                    ToastFeedback.showSuccess(
-                                      context,
-                                      'Subjects, decks, and analytics synced with cloud.',
-                                    );
-                                  }
-                                },
-                          child: const Text(
-                            'Sync Now',
-                            style: TextStyle(
-                              color: AppColors.primary,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
+                      _buildNavRow(
+                        icon: Icons.cloud_sync_rounded,
+                        iconColor: AppColors.success,
+                        title: 'Sync Workspace Now',
+                        valueText: repo.isSyncing ? 'Syncing...' : syncSubtitle,
+                        onTap: repo.isSyncing
+                            ? null
+                            : () async {
+                                await repo.fetchAllFromCloud();
+                                if (context.mounted) {
+                                  ToastFeedback.showSuccess(
+                                    context,
+                                    'Workspace synced with Recall Cloud.',
+                                  );
+                                }
+                              },
                       ),
-                      const Divider(color: AppColors.borderSubtle, height: 1),
-                      ListTile(
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                        leading: Container(
-                          width: 40,
-                          height: 40,
-                          decoration: BoxDecoration(
-                            color: AppColors.warning.withValues(alpha: 0.14),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: const Icon(Icons.restart_alt_rounded, color: AppColors.warning),
-                        ),
-                        title: const Text('Reset All Study Progress',
-                            style: AppTypography.titleMedium),
-                        subtitle: const Text(
-                          'Reset intervals and review counts to 0 without deleting your decks.',
-                          style: AppTypography.bodySmall,
-                        ),
+                      const Divider(color: AppColors.borderSubtle, height: 1, indent: 56),
+                      _buildNavRow(
+                        icon: Icons.restart_alt_rounded,
+                        iconColor: AppColors.warning,
+                        title: 'Reset All Study Progress',
+                        valueText: '${repo.totalCardsCount} cards',
                         onTap: repo.totalCardsCount == 0
                             ? null
                             : () => _confirmResetAllProgress(context),
@@ -279,111 +162,63 @@ class SettingsScreen extends StatelessWidget {
                   ),
                 ),
 
-                const SizedBox(height: 24),
+                const SizedBox(height: 22),
 
-                // 4. About Recall (What's Inside the App)
-                const Text('ABOUT RECALL', style: AppTypography.labelMedium),
-                const SizedBox(height: 10),
+                // 4. App Information Group
+                _buildSectionLabel('APPLICATION'),
+                const SizedBox(height: 8),
                 Container(
-                  padding: const EdgeInsets.all(18),
                   decoration: BoxDecoration(
                     color: AppColors.bgCard,
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(18),
                     border: Border.all(color: AppColors.borderSubtle),
                   ),
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        children: [
-                          Container(
-                            width: 36,
-                            height: 36,
-                            decoration: BoxDecoration(
-                              color: AppColors.primary,
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: const Icon(
-                              Icons.bolt_rounded,
-                              color: AppColors.bgCanvas,
-                              size: 22,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text('Recall Learning Companion',
-                                    style: AppTypography.titleMedium),
-                                Text(
-                                  'Version 2.2.0 • Study smarter, remember longer.',
-                                  style: AppTypography.bodySmall.copyWith(fontSize: 11),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      _buildFeatureExplanation(
-                        icon: Icons.psychology_outlined,
-                        color: AppColors.primary,
-                        title: 'SuperMemo-2 (SM-2) Spaced Repetition',
-                        description:
-                            'Every time you flip a card and rate your recall (Again, Hard, Good, Easy), Recall calculates your personal Ease Factor and schedules the next review right before you forget (1d → 6d → 15d+).',
-                      ),
-                      const SizedBox(height: 12),
-                      _buildFeatureExplanation(
-                        icon: Icons.auto_awesome_rounded,
-                        color: AppColors.accentCyan,
-                        title: 'New Cards vs. Due Today',
-                        description:
-                            'Newly created flashcards are tagged as "New Card" for initial learning. Once studied, they move onto a timed schedule and appear as "Due Today" when their interval arrives.',
-                      ),
-                      const SizedBox(height: 12),
-                      _buildFeatureExplanation(
-                        icon: Icons.star_rounded,
-                        color: Colors.amber,
-                        title: 'Starred Priority Decks',
-                        description:
-                            'Tap the star icon on any deck to pin it to the top of your Dashboard and Library, or filter by "★ Starred" during exam prep.',
-                      ),
-                      const SizedBox(height: 12),
-                      _buildFeatureExplanation(
-                        icon: Icons.radar_rounded,
-                        color: AppColors.danger,
-                        title: 'Weakness Radar & Active Quiz',
-                        description:
-                            'Cards with ≥ 40% failure rate or low Ease Factor (< 1.9) are automatically surfaced in Analytics so you can drill weak spots or test yourself in Multiple-Choice Quiz mode.',
+                      _buildNavRow(
+                        icon: Icons.info_outline_rounded,
+                        iconColor: AppColors.accentCyan,
+                        title: 'About Recall & Features',
+                        valueText: 'v2.3.0',
+                        onTap: () => _openAboutRecallSheet(context),
                       ),
                     ],
                   ),
                 ),
 
-                const SizedBox(height: 24),
+                const SizedBox(height: 28),
 
-                // 5. Sign Out Button
-                 SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton.icon(
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.danger,
-                      side: BorderSide(color: AppColors.danger.withValues(alpha: 0.6)),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
+                // 5. Sign Out Row
+                Container(
+                  decoration: BoxDecoration(
+                    color: AppColors.bgCard,
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(color: AppColors.danger.withValues(alpha: 0.45)),
+                  ),
+                  child: ListTile(
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                    onTap: () => _confirmSignOut(context),
+                    leading: Container(
+                      width: 34,
+                      height: 34,
+                      decoration: BoxDecoration(
+                        color: AppColors.danger.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(10),
                       ),
+                      child: const Icon(Icons.logout_rounded, color: AppColors.danger, size: 18),
                     ),
-                    icon: const Icon(Icons.logout_rounded, size: 20),
-                    label: const Text(
-                      'Sign Out of Recall',
-                      style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+                    title: Text(
+                      'Sign Out',
+                      style: AppTypography.titleMedium.copyWith(color: AppColors.danger),
                     ),
-                    onPressed: () => _confirmSignOut(context),
+                    trailing: const Icon(
+                      Icons.chevron_right_rounded,
+                      color: AppColors.danger,
+                      size: 20,
+                    ),
                   ),
                 ),
-                const SizedBox(height: 28),
+                const SizedBox(height: 32),
               ],
             ),
           ),
@@ -392,32 +227,273 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildFeatureExplanation({
+  Widget _buildSectionLabel(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 4),
+      child: Text(
+        text,
+        style: AppTypography.labelMedium.copyWith(
+          color: AppColors.textMuted,
+          fontSize: 11,
+          letterSpacing: 0.8,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNavRow({
+    required IconData icon,
+    required Color iconColor,
+    required String title,
+    required String valueText,
+    required VoidCallback? onTap,
+  }) {
+    return ListTile(
+      onTap: onTap,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      leading: Container(
+        width: 34,
+        height: 34,
+        decoration: BoxDecoration(
+          color: iconColor.withValues(alpha: 0.16),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Icon(icon, color: iconColor, size: 19),
+      ),
+      title: Text(title, style: AppTypography.titleMedium.copyWith(fontSize: 15)),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            valueText,
+            style: AppTypography.bodySmall.copyWith(color: AppColors.textMuted),
+          ),
+          const SizedBox(width: 4),
+          const Icon(Icons.chevron_right_rounded, color: AppColors.textMuted, size: 20),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSwitchRow({
+    required IconData icon,
+    required Color iconColor,
+    required String title,
+    required String subtitle,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+  }) {
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      leading: Container(
+        width: 34,
+        height: 34,
+        decoration: BoxDecoration(
+          color: iconColor.withValues(alpha: 0.16),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Icon(icon, color: iconColor, size: 19),
+      ),
+      title: Text(title, style: AppTypography.titleMedium.copyWith(fontSize: 15)),
+      subtitle: Text(subtitle, style: AppTypography.bodySmall.copyWith(fontSize: 12)),
+      trailing: Switch(
+        value: value,
+        activeThumbColor: AppColors.primary,
+        onChanged: onChanged,
+      ),
+    );
+  }
+
+  void _openDailyGoalSheet(BuildContext context, int currentGoal) {
+    final options = [
+      (10, 'Casual • ~5 mins/day'),
+      (20, 'Regular • ~10 mins/day'),
+      (30, 'Serious • ~15 mins/day'),
+      (50, 'Intensive • ~25 mins/day'),
+    ];
+
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: AppColors.bgSurface1,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Daily Review Goal', style: AppTypography.titleLarge),
+                const SizedBox(height: 4),
+                const Text(
+                  'Choose how many flashcards you aim to review each day.',
+                  style: AppTypography.bodySmall,
+                ),
+                const SizedBox(height: 16),
+                ...options.map((opt) {
+                  final count = opt.$1;
+                  final desc = opt.$2;
+                  final selected = count == currentGoal;
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 10),
+                    decoration: BoxDecoration(
+                      color: selected
+                          ? AppColors.primary.withValues(alpha: 0.15)
+                          : AppColors.bgSurface2,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: selected ? AppColors.primary : AppColors.borderSubtle,
+                        width: selected ? 1.8 : 1.0,
+                      ),
+                    ),
+                    child: ListTile(
+                      onTap: () {
+                        StudyRepository.instance.setDailyGoalCards(count);
+                        Navigator.of(ctx).pop();
+                        ToastFeedback.showSuccess(
+                          context,
+                          'Daily goal updated to $count cards/day.',
+                        );
+                      },
+                      title: Text(
+                        '$count cards per day',
+                        style: AppTypography.titleMedium.copyWith(
+                          color: selected ? AppColors.primary : AppColors.textPrimary,
+                        ),
+                      ),
+                      subtitle: Text(desc, style: AppTypography.bodySmall),
+                      trailing: selected
+                          ? const Icon(Icons.check_circle_rounded, color: AppColors.primary)
+                          : null,
+                    ),
+                  );
+                }),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _openAboutRecallSheet(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.bgSurface1,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(24, 24, 24, 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 42,
+                      height: 42,
+                      decoration: BoxDecoration(
+                        color: AppColors.primary,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(
+                        Icons.bolt_rounded,
+                        color: AppColors.textInverse,
+                        size: 24,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('About Recall', style: AppTypography.titleLarge),
+                          Text(
+                            'Version 2.3.0 • Study smarter, remember longer.',
+                            style: AppTypography.bodySmall.copyWith(color: AppColors.accentCyan),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close_rounded),
+                      onPressed: () => Navigator.of(ctx).pop(),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 18),
+                _buildAboutItem(
+                  icon: Icons.psychology_outlined,
+                  color: AppColors.primary,
+                  title: 'SuperMemo-2 (SM-2) Scheduling',
+                  desc:
+                      'Adapts review intervals dynamically based on your recall rating (Again, Hard, Good, Easy) so you review concepts right before forgetting.',
+                ),
+                const SizedBox(height: 14),
+                _buildAboutItem(
+                  icon: Icons.auto_awesome_rounded,
+                  color: AppColors.accentCyan,
+                  title: 'New Cards vs. Due Today',
+                  desc:
+                      'Unstudied cards start as "New Card". Once completed in your first study pass, they enter your timed SM-2 review schedule.',
+                ),
+                const SizedBox(height: 14),
+                _buildAboutItem(
+                  icon: Icons.star_rounded,
+                  color: Colors.amber,
+                  title: 'Starred Priority Decks',
+                  desc:
+                      'Star any deck to pin it to the top of your Dashboard and Decks Library for quick exam preparation.',
+                ),
+                const SizedBox(height: 14),
+                _buildAboutItem(
+                  icon: Icons.radar_rounded,
+                  color: AppColors.danger,
+                  title: 'Weakness Radar & Quiz Mode',
+                  desc:
+                      'Automatically detects cards with ≥ 40% failure rate or low Ease Factor (< 1.9) so you can drill weak concepts.',
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildAboutItem({
     required IconData icon,
     required Color color,
     required String title,
-    required String description,
+    required String desc,
   }) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
-          margin: const EdgeInsets.only(top: 2),
-          padding: const EdgeInsets.all(6),
+          padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.14),
-            borderRadius: BorderRadius.circular(8),
+            color: color.withValues(alpha: 0.15),
+            borderRadius: BorderRadius.circular(10),
           ),
-          child: Icon(icon, size: 16, color: color),
+          child: Icon(icon, color: color, size: 18),
         ),
         const SizedBox(width: 12),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(title, style: AppTypography.labelMedium.copyWith(color: Colors.white)),
+              Text(title, style: AppTypography.titleMedium.copyWith(fontSize: 14)),
               const SizedBox(height: 2),
-              Text(description, style: AppTypography.bodySmall),
+              Text(desc, style: AppTypography.bodySmall),
             ],
           ),
         ),
@@ -431,21 +507,20 @@ class SettingsScreen extends StatelessWidget {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.bgSurface1,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-          side: const BorderSide(color: AppColors.borderSubtle),
-        ),
         title: const Text('Edit Display Name', style: AppTypography.titleLarge),
-        content: TextField(
-          controller: ctrl,
-          autofocus: true,
-          style: AppTypography.bodyMedium.copyWith(color: Colors.white),
-          decoration: InputDecoration(
-            labelText: 'Your Name',
-            filled: true,
-            fillColor: AppColors.bgSurface2,
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-          ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('DISPLAY NAME', style: AppTypography.labelMedium),
+            const SizedBox(height: 6),
+            TextField(
+              controller: ctrl,
+              autofocus: true,
+              style: AppTypography.bodyMedium.copyWith(color: Colors.white),
+              decoration: const InputDecoration(hintText: 'Enter your name'),
+            ),
+          ],
         ),
         actions: [
           TextButton(
@@ -481,10 +556,6 @@ class SettingsScreen extends StatelessWidget {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.bgSurface1,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-          side: const BorderSide(color: AppColors.borderSubtle),
-        ),
         title: const Text('Reset All Study Progress?', style: AppTypography.titleLarge),
         content: const Text(
           'This will reset all cards across your decks back to "New Card" (0 reviews) so you can study everything fresh. Your subjects, decks, and flashcards will not be deleted.',
@@ -496,7 +567,7 @@ class SettingsScreen extends StatelessWidget {
             child: const Text('Cancel'),
           ),
           AppButton(
-            label: 'Reset All Progress',
+            label: 'Reset All',
             onPressed: () async {
               Navigator.of(ctx).pop();
               await StudyRepository.instance.resetAllProgress();
@@ -515,13 +586,9 @@ class SettingsScreen extends StatelessWidget {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.bgSurface1,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-          side: const BorderSide(color: AppColors.borderSubtle),
-        ),
         title: const Text('Sign Out of Recall?', style: AppTypography.titleLarge),
         content: const Text(
-          'Your subjects, decks, and study progress are safely saved to your Recall Cloud account.',
+          'Your subjects, decks, and study progress are safely synced with your Recall Cloud account.',
           style: AppTypography.bodyMedium,
         ),
         actions: [
@@ -531,6 +598,7 @@ class SettingsScreen extends StatelessWidget {
           ),
           AppButton(
             label: 'Sign Out',
+            variant: AppButtonVariant.danger,
             onPressed: () {
               Navigator.of(ctx).pop();
               AuthService.instance.logout();

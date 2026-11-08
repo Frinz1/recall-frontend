@@ -523,7 +523,7 @@ class _DeckListScreenState extends State<DeckListScreen> {
             return AlertDialog(
               backgroundColor: AppColors.bgSurface1,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(24),
                 side: const BorderSide(color: AppColors.borderSubtle),
               ),
               title: const Text('Create New Deck', style: AppTypography.titleLarge),
@@ -532,32 +532,35 @@ class _DeckListScreenState extends State<DeckListScreen> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    const Text('DECK TITLE', style: AppTypography.labelMedium),
+                    const SizedBox(height: 6),
                     TextField(
                       controller: titleCtrl,
                       style: AppTypography.bodyMedium.copyWith(color: Colors.white),
                       decoration: const InputDecoration(
-                        labelText: 'Deck Title',
-                        hintText: 'e.g., Computer Architecture',
+                        hintText: 'e.g., Computer Architecture, Anatomy 101',
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 14),
+                    const Text('DESCRIPTION (OPTIONAL)', style: AppTypography.labelMedium),
+                    const SizedBox(height: 6),
                     TextField(
                       controller: descCtrl,
+                      maxLines: 2,
                       style: AppTypography.bodyMedium.copyWith(color: Colors.white),
                       decoration: const InputDecoration(
-                        labelText: 'Description',
-                        hintText: 'What concepts are covered?',
+                        hintText: 'What key concepts are covered in this deck?',
                       ),
                     ),
                     const SizedBox(height: 16),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text('Subject Category', style: AppTypography.labelMedium),
+                        const Text('SUBJECT CATEGORY', style: AppTypography.labelMedium),
                         if (currentSubjects.isNotEmpty)
                           TextButton.icon(
                             style: TextButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                               minimumSize: Size.zero,
                               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                             ),
@@ -571,39 +574,88 @@ class _DeckListScreenState extends State<DeckListScreen> {
                                 },
                               );
                             },
-                            icon: const Icon(Icons.add, size: 15, color: AppColors.primary),
+                            icon: const Icon(Icons.add_rounded, size: 16, color: AppColors.primary),
                             label: const Text(
                               'New Subject',
-                              style: TextStyle(fontSize: 12, color: AppColors.primary),
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.primary,
+                              ),
                             ),
                           ),
                       ],
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 8),
                     if (currentSubjects.isEmpty)
                       TextField(
                         controller: newSubjectCtrl,
                         style: AppTypography.bodyMedium.copyWith(color: Colors.white),
                         decoration: const InputDecoration(
-                          labelText: 'New Subject Name',
-                          hintText: 'e.g., Networking, Operating Systems',
+                          hintText: 'Enter first subject (e.g., Networking, Biology)',
                         ),
                       )
                     else
-                      DropdownButtonFormField<String>(
-                        initialValue: selectedSub,
-                        dropdownColor: AppColors.bgSurface2,
-                        items: currentSubjects.map((s) {
-                          return DropdownMenuItem(value: s.id, child: Text(s.name));
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: currentSubjects.map((s) {
+                          final isSelected = selectedSub == s.id;
+                          final subColor = Color(s.colorValue);
+                          final icon = AppColors.resolveSubjectIcon(s.name);
+                          return GestureDetector(
+                            onTap: () => setDialogState(() => selectedSub = s.id),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 150),
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+                              decoration: BoxDecoration(
+                                color: isSelected
+                                    ? subColor.withValues(alpha: 0.22)
+                                    : AppColors.bgSurface2,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: isSelected ? subColor : AppColors.borderSubtle,
+                                  width: isSelected ? 1.8 : 1.0,
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  if (icon != null)
+                                    Icon(
+                                      icon,
+                                      size: 15,
+                                      color: isSelected ? subColor : AppColors.textSecondary,
+                                    )
+                                  else
+                                    Container(
+                                      width: 8,
+                                      height: 8,
+                                      decoration: BoxDecoration(
+                                        color: subColor,
+                                        shape: BoxShape.circle,
+                                      ),
+                                    ),
+                                  const SizedBox(width: 7),
+                                  Text(
+                                    s.name,
+                                    style: AppTypography.badge.copyWith(
+                                      color: isSelected ? Colors.white : AppColors.textSecondary,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                  if (isSelected) ...[
+                                    const SizedBox(width: 6),
+                                    Icon(Icons.check_circle_rounded, size: 14, color: subColor),
+                                  ],
+                                ],
+                              ),
+                            ),
+                          );
                         }).toList(),
-                        onChanged: (val) {
-                          if (val != null) {
-                            setDialogState(() => selectedSub = val);
-                          }
-                        },
                       ),
                     const SizedBox(height: 16),
-                    const Text('Deck Color', style: AppTypography.labelMedium),
+                    const Text('DECK ACCENT COLOR', style: AppTypography.labelMedium),
                     const SizedBox(height: 8),
                     Wrap(
                       spacing: 8,

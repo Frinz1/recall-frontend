@@ -31,7 +31,7 @@ class SubjectListScreen extends StatelessWidget {
           ),
           body: subjects.isEmpty
               ? EmptyStateView(
-                  icon: Icons.category_outlined,
+                  icon: Icons.auto_stories_outlined,
                   title: 'No Subjects Yet',
                   description: 'Create academic subjects to organize your study materials.',
                   ctaLabel: 'Add First Subject',
@@ -42,72 +42,97 @@ class SubjectListScreen extends StatelessWidget {
                   itemCount: subjects.length,
                   itemBuilder: (context, index) {
                     final sub = subjects[index];
-                    final deckCount = repo.decks.where((d) => d.subjectId == sub.id).length;
+                    final subDecks = repo.decks.where((d) => d.subjectId == sub.id).toList();
+                    final deckCount = subDecks.length;
+                    final cardCount = subDecks.fold(0, (sum, d) => sum + d.totalCards);
+                    final resolvedIcon = AppColors.resolveSubjectIcon(sub.name);
+                    final monogram = AppColors.getSubjectMonogram(sub.name);
 
                     return Container(
                       margin: const EdgeInsets.only(bottom: 12),
                       decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: AppColors.borderSubtle),
-                      ),
-                      child: Material(
                         color: AppColors.bgCard,
-                        borderRadius: BorderRadius.circular(16),
-                        clipBehavior: Clip.antiAlias,
-                        child: ListTile(
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                          leading: Container(
-                            width: 44,
-                            height: 44,
-                            decoration: BoxDecoration(
-                              color: Color(sub.colorValue).withValues(alpha: 0.18),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: Color(sub.colorValue)),
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(
+                          color: Color(sub.colorValue).withValues(alpha: 0.35),
+                          width: 1.2,
+                        ),
+                      ),
+                      child: ListTile(
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                        leading: Container(
+                          width: 46,
+                          height: 46,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                Color(sub.colorValue).withValues(alpha: 0.28),
+                                Color(sub.colorValue).withValues(alpha: 0.10),
+                              ],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
                             ),
-                            child: Center(
-                              child: Icon(
-                                Icons.folder_special_rounded,
-                                color: Color(sub.colorValue),
-                                size: 22,
-                              ),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                              color: Color(sub.colorValue).withValues(alpha: 0.7),
+                              width: 1.5,
                             ),
                           ),
-                          title: Text(sub.name, style: AppTypography.titleMedium),
-                          subtitle: Text(
-                            '$deckCount flashcard decks',
+                          child: Center(
+                            child: resolvedIcon != null
+                                ? Icon(
+                                    resolvedIcon,
+                                    color: Color(sub.colorValue),
+                                    size: 22,
+                                  )
+                                : Text(
+                                    monogram,
+                                    style: AppTypography.titleMedium.copyWith(
+                                      color: Color(sub.colorValue),
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 15,
+                                    ),
+                                  ),
+                          ),
+                        ),
+                        title: Text(sub.name, style: AppTypography.titleMedium),
+                        subtitle: Padding(
+                          padding: const EdgeInsets.only(top: 3),
+                          child: Text(
+                            '$deckCount ${deckCount == 1 ? 'deck' : 'decks'} • $cardCount ${cardCount == 1 ? 'card' : 'cards'}',
                             style: AppTypography.bodySmall,
                           ),
-                          trailing: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              IconButton(
-                                icon: const Icon(
-                                  Icons.edit_outlined,
-                                  color: AppColors.textSecondary,
-                                  size: 20,
-                                ),
-                                tooltip: 'Edit Subject',
-                                onPressed: () => _openSubjectDialog(context, existing: sub),
+                        ),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              icon: const Icon(
+                                Icons.edit_outlined,
+                                color: AppColors.textSecondary,
+                                size: 20,
                               ),
-                              IconButton(
-                                icon: const Icon(
-                                  Icons.delete_outline_rounded,
-                                  color: AppColors.textMuted,
-                                  size: 20,
-                                ),
-                                tooltip: 'Delete Subject',
-                                onPressed: () async {
-                                  await StudyRepository.instance.deleteSubject(sub.id);
-                                  if (context.mounted) {
-                                    ToastFeedback.showInfo(
-                                      context,
-                                      'Subject "${sub.name}" removed.',
-                                    );
-                                  }
-                                },
+                              tooltip: 'Edit Subject',
+                              onPressed: () => _openSubjectDialog(context, existing: sub),
+                            ),
+                            IconButton(
+                              icon: const Icon(
+                                Icons.delete_outline_rounded,
+                                color: AppColors.textMuted,
+                                size: 20,
                               ),
-                            ],
-                          ),
+                              tooltip: 'Delete Subject',
+                              onPressed: () async {
+                                await StudyRepository.instance.deleteSubject(sub.id);
+                                if (context.mounted) {
+                                  ToastFeedback.showInfo(
+                                    context,
+                                    'Subject "${sub.name}" removed.',
+                                  );
+                                }
+                              },
+                            ),
+                          ],
                         ),
                       ),
                     );
@@ -124,12 +149,12 @@ class SubjectListScreen extends StatelessWidget {
     int selectedColor = existing?.colorValue ?? 0xFF6366F1;
     final colorOptions = [
       0xFF6366F1, // Indigo
-      0xFF3B82F6, // Blue
+      0xFF38BDF8, // Sky Cyan
       0xFF10B981, // Emerald
       0xFFA855F7, // Purple
       0xFFF59E0B, // Amber
       0xFFEF4444, // Rose
-      0xFF06B6D4, // Cyan
+      0xFFEC4899, // Pink
     ];
 
     showDialog<void>(
@@ -140,7 +165,7 @@ class SubjectListScreen extends StatelessWidget {
             return AlertDialog(
               backgroundColor: AppColors.bgSurface1,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(24),
                 side: const BorderSide(color: AppColors.borderSubtle),
               ),
               title: Text(
@@ -151,31 +176,30 @@ class SubjectListScreen extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  const Text('SUBJECT NAME', style: AppTypography.labelMedium),
+                  const SizedBox(height: 8),
                   TextField(
                     controller: nameCtrl,
                     autofocus: true,
                     style: AppTypography.bodyMedium.copyWith(color: Colors.white),
-                    decoration: InputDecoration(
-                      labelText: 'Subject Name',
-                      hintText: 'e.g. Cybersecurity, Calculus',
-                      filled: true,
-                      fillColor: AppColors.bgSurface2,
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                    decoration: const InputDecoration(
+                      hintText: 'e.g. Pharmacology, Discrete Math, Law',
                     ),
                   ),
                   const SizedBox(height: 18),
-                  const Text('Theme Color', style: AppTypography.labelMedium),
+                  const Text('THEME COLOR', style: AppTypography.labelMedium),
                   const SizedBox(height: 10),
                   Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
+                    spacing: 10,
+                    runSpacing: 10,
                     children: colorOptions.map((c) {
                       final isSelected = selectedColor == c;
                       return GestureDetector(
                         onTap: () => setDialogState(() => selectedColor = c),
-                        child: Container(
-                          width: 32,
-                          height: 32,
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 150),
+                          width: 34,
+                          height: 34,
                           decoration: BoxDecoration(
                             color: Color(c),
                             shape: BoxShape.circle,
@@ -183,10 +207,18 @@ class SubjectListScreen extends StatelessWidget {
                               color: isSelected ? Colors.white : Colors.transparent,
                               width: 2.5,
                             ),
+                            boxShadow: isSelected
+                                ? [
+                                    BoxShadow(
+                                      color: Color(c).withValues(alpha: 0.45),
+                                      blurRadius: 10,
+                                    ),
+                                  ]
+                                : null,
                           ),
                           child: isSelected
                               ? const Center(
-                                  child: Icon(Icons.check, size: 16, color: Colors.white),
+                                  child: Icon(Icons.check_rounded, size: 18, color: Colors.white),
                                 )
                               : null,
                         ),

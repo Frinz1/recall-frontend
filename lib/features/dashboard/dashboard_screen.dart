@@ -271,33 +271,39 @@ class DashboardScreen extends StatelessWidget {
                         itemBuilder: (context, index) {
                           final sub = subjects[index];
                           final count = decks.where((d) => d.subjectId == sub.id).length;
+                          final subColor = Color(sub.colorValue);
+                          final subIcon = AppColors.resolveSubjectIcon(sub.name);
                           return InkWell(
                             onTap: () {
                               Navigator.of(context).push(
                                 MaterialPageRoute<void>(builder: (_) => const SubjectListScreen()),
                               );
                             },
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(14),
                             child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                               decoration: BoxDecoration(
                                 color: AppColors.bgCard,
-                                borderRadius: BorderRadius.circular(12),
+                                borderRadius: BorderRadius.circular(14),
                                 border: Border.all(
-                                  color: Color(sub.colorValue).withValues(alpha: 0.5),
+                                  color: subColor.withValues(alpha: 0.55),
+                                  width: 1.2,
                                 ),
                               ),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Container(
-                                    width: 10,
-                                    height: 10,
-                                    decoration: BoxDecoration(
-                                      color: Color(sub.colorValue),
-                                      shape: BoxShape.circle,
+                                  if (subIcon != null)
+                                    Icon(subIcon, size: 15, color: subColor)
+                                  else
+                                    Container(
+                                      width: 9,
+                                      height: 9,
+                                      decoration: BoxDecoration(
+                                        color: subColor,
+                                        shape: BoxShape.circle,
+                                      ),
                                     ),
-                                  ),
                                   const SizedBox(width: 8),
                                   Text(
                                     sub.name,
@@ -474,16 +480,16 @@ class DashboardScreen extends StatelessWidget {
     } else if (scheduledDue > 0) {
       headline = '$scheduledDue Cards Due Today';
       subtext = newCount > 0
-          ? 'Plus $newCount new cards ready to learn. Reviewing right when intervals expire maximizes long-term memory.'
-          : 'Reviewing cards right when they hit the forgetting threshold yields 92% higher retention.';
+          ? 'Plus $newCount new cards ready to learn ($reviewedToday / $dailyGoal daily goal completed).'
+          : 'Complete your scheduled SM-2 reviews today to extend your memory intervals.';
     } else if (newCount > 0 && totalDue > 0) {
       headline = '$newCount New Cards Ready to Learn';
       subtext =
-          'Complete your first pass on these new flashcards to schedule their SM-2 spaced repetition intervals.';
+          'Start your first study pass on these new flashcards to schedule their SM-2 intervals.';
     } else {
       headline = 'All Caught Up For Today!';
       subtext =
-          'Outstanding work maintaining your streak. Explore your decks or test your knowledge with a quiz.';
+          'You have completed $reviewedToday reviews today. Explore your decks or test yourself with a quiz.';
     }
 
     return Container(

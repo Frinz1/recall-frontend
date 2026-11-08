@@ -33,7 +33,7 @@ class _RecallAppState extends State<RecallApp> {
   Future<void> _bootApp() async {
     await Future.wait([
       AuthService.instance.initializeSession(),
-      Future.delayed(const Duration(milliseconds: 1800)),
+      Future<void>.delayed(const Duration(milliseconds: 3800)),
     ]);
 
     if (!mounted) return;

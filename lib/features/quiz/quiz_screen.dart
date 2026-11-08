@@ -1,10 +1,12 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../core/models/flashcard_model.dart';
 import '../../core/services/study_repository.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/widgets/app_button.dart';
+import '../../core/widgets/confetti_burst.dart';
 
 class QuizScreen extends StatefulWidget {
   final Deck deck;
@@ -71,6 +73,7 @@ class _QuizScreenState extends State<QuizScreen> {
 
   void _selectOption(int index) {
     if (_answered) return;
+    HapticFeedback.selectionClick();
     setState(() {
       _selectedOptionIndex = index;
       _answered = true;
@@ -95,15 +98,16 @@ class _QuizScreenState extends State<QuizScreen> {
     final total = _quizCards.length;
     final percentage = ((_score / total) * 100).round();
 
-    showDialog(
+    showDialog<void>(
       context: context,
       barrierDismissible: false,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.bgSurface1,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-          side: const BorderSide(color: AppColors.borderSubtle),
-        ),
+      builder: (ctx) => ConfettiBurst(
+        child: AlertDialog(
+          backgroundColor: AppColors.bgSurface1,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+            side: const BorderSide(color: AppColors.borderSubtle),
+          ),
         title: Row(
           children: [
             Container(
@@ -161,6 +165,7 @@ class _QuizScreenState extends State<QuizScreen> {
           ),
         ],
       ),
+    ),
     );
   }
 
