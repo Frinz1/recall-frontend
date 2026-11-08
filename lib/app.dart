@@ -1,16 +1,63 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'core/services/auth_service.dart';
 import 'core/theme/app_colors.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/app_typography.dart';
 import 'features/analytics/analytics_screen.dart';
+import 'features/auth/auth_screen.dart';
 import 'features/dashboard/dashboard_screen.dart';
 import 'features/deck/deck_list_screen.dart';
-
+import 'features/onboarding/onboarding_screen.dart';
 import 'features/splash/splash_screen.dart';
 
-class RecallApp extends StatelessWidget {
+enum AppFlowState { splash, onboarding, auth, authenticated }
+
+class RecallApp extends StatefulWidget {
   const RecallApp({super.key});
+
+  @override
+  State<RecallApp> createState() => _RecallAppState();
+}
+
+class _RecallAppState extends State<RecallApp> {
+  AppFlowState _flow = AppFlowState.splash;
+  Timer? _splashTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _splashTimer = Timer(const Duration(milliseconds: 1800), () {
+      if (!mounted) return;
+      setState(() {
+        if (AuthService.instance.isAuthenticated) {
+          _flow = AppFlowState.authenticated;
+        } else {
+          _flow = AppFlowState.onboarding;
+        }
+      });
+    });
+
+    AuthService.instance.addListener(_handleAuthChange);
+  }
+
+  void _handleAuthChange() {
+    if (!mounted) return;
+    setState(() {
+      if (AuthService.instance.isAuthenticated) {
+        _flow = AppFlowState.authenticated;
+      } else {
+        _flow = AppFlowState.auth;
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _splashTimer?.cancel();
+    AuthService.instance.removeListener(_handleAuthChange);
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -18,8 +65,29 @@ class RecallApp extends StatelessWidget {
       title: 'Recall - Smart Flashcards & Learning Companion',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.darkTheme,
-      home: const SplashScreen(nextScreen: MainNavigationShell()),
+      home: _buildCurrentScreen(),
     );
+  }
+
+  Widget _buildCurrentScreen() {
+    switch (_flow) {
+      case AppFlowState.splash:
+        return const SplashScreen();
+      case AppFlowState.onboarding:
+        return OnboardingScreen(
+          onComplete: () {
+            if (mounted) setState(() => _flow = AppFlowState.auth);
+          },
+        );
+      case AppFlowState.auth:
+        return AuthScreen(
+          onSuccess: () {
+            if (mounted) setState(() => _flow = AppFlowState.authenticated);
+          },
+        );
+      case AppFlowState.authenticated:
+        return const MainNavigationShell();
+    }
   }
 }
 

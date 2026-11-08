@@ -2,13 +2,13 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/theme/app_colors.dart';
-import '../auth/auth_screen.dart';
 import '../onboarding/onboarding_screen.dart';
 
 class SplashScreen extends StatefulWidget {
-  final Widget nextScreen;
+  final Widget? nextScreen;
+  final VoidCallback? onFinished;
 
-  const SplashScreen({super.key, required this.nextScreen});
+  const SplashScreen({super.key, this.nextScreen, this.onFinished});
 
   @override
   State<SplashScreen> createState() => _SplashScreenState();
@@ -17,6 +17,7 @@ class SplashScreen extends StatefulWidget {
 class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderStateMixin {
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
+  Timer? _timer;
 
   @override
   void initState() {
@@ -30,8 +31,16 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
 
-    // Auto navigate after splash entrance
-    Timer(const Duration(milliseconds: 2200), _checkSessionAndNavigate);
+    // Auto navigate after splash entrance if onFinished or nextScreen provided
+    if (widget.onFinished != null) {
+      _timer = Timer(const Duration(milliseconds: 2000), () {
+        if (mounted && widget.onFinished != null) {
+          widget.onFinished!();
+        }
+      });
+    } else if (widget.nextScreen != null) {
+      _timer = Timer(const Duration(milliseconds: 2000), _checkSessionAndNavigate);
+    }
   }
 
   void _checkSessionAndNavigate() {
@@ -39,7 +48,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
 
     if (AuthService.instance.isAuthenticated) {
       Navigator.of(context).pushReplacement(
-        MaterialPageRoute<void>(builder: (_) => widget.nextScreen),
+        MaterialPageRoute<void>(builder: (_) => widget.nextScreen!),
       );
     } else {
       Navigator.of(context).pushReplacement(
@@ -50,6 +59,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
 
   @override
   void dispose() {
+    _timer?.cancel();
     _pulseController.dispose();
     super.dispose();
   }
@@ -77,11 +87,11 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                     color: AppColors.bgSurface1,
                     borderRadius: BorderRadius.circular(28),
                     border: Border.all(color: AppColors.primary, width: 2),
-                    boxShadow: [
+                    boxShadow: const [
                       BoxShadow(
                         color: AppColors.primaryGlow,
                         blurRadius: 24,
-                        offset: const Offset(0, 8),
+                        offset: Offset(0, 8),
                       ),
                     ],
                   ),

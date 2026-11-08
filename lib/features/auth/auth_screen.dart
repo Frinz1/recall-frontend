@@ -5,7 +5,9 @@ import '../../core/theme/app_colors.dart';
 import '../../core/widgets/toast_feedback.dart';
 
 class AuthScreen extends StatefulWidget {
-  const AuthScreen({super.key});
+  final VoidCallback? onSuccess;
+
+  const AuthScreen({super.key, this.onSuccess});
 
   @override
   State<AuthScreen> createState() => _AuthScreenState();
@@ -49,9 +51,13 @@ class _AuthScreenState extends State<AuthScreen> {
 
     if (success && mounted) {
       ToastFeedback.showSuccess(context, _isLogin ? 'Welcome back!' : 'Account created!');
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute<void>(builder: (_) => const MainNavigationShell()),
-      );
+      if (widget.onSuccess != null) {
+        widget.onSuccess!();
+      } else {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute<void>(builder: (_) => const MainNavigationShell()),
+        );
+      }
     } else if (mounted) {
       ToastFeedback.showError(context, 'Authentication failed. Please verify credentials.');
     }
@@ -66,9 +72,13 @@ class _AuthScreenState extends State<AuthScreen> {
 
     if (success && mounted) {
       ToastFeedback.showSuccess(context, 'Signed in with Google!');
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute<void>(builder: (_) => const MainNavigationShell()),
-      );
+      if (widget.onSuccess != null) {
+        widget.onSuccess!();
+      } else {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute<void>(builder: (_) => const MainNavigationShell()),
+        );
+      }
     } else if (mounted) {
       // Fallback demo student if needed
       final demoSuccess = await AuthService.instance.login(
@@ -76,9 +86,13 @@ class _AuthScreenState extends State<AuthScreen> {
         password: 'password123',
       );
       if (demoSuccess && mounted) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute<void>(builder: (_) => const MainNavigationShell()),
-        );
+        if (widget.onSuccess != null) {
+          widget.onSuccess!();
+        } else {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute<void>(builder: (_) => const MainNavigationShell()),
+          );
+        }
       }
     }
   }
