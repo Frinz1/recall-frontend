@@ -6,8 +6,10 @@ import 'package:recall/core/models/flashcard_model.dart';
 import 'package:recall/core/services/study_repository.dart';
 import 'package:recall/core/theme/app_colors.dart';
 import 'package:recall/core/theme/theme_service.dart';
+import 'package:recall/core/widgets/curved_bottom_sheet.dart';
 import 'package:recall/core/widgets/quick_create_sheet.dart';
 import 'package:recall/features/auth/auth_screen.dart';
+import 'package:recall/features/deck/deck_detail_screen.dart';
 import 'package:recall/features/settings/settings_screen.dart';
 import 'package:recall/features/splash/splash_screen.dart';
 import 'package:recall/features/study/widgets/flip_card_widget.dart';
@@ -565,4 +567,204 @@ void main() {
     expect(AppColors.isDarkMode, isFalse);
     expect(AppColors.bgCanvas, const Color(0xFFF8FAFC));
   });
+
+  testWidgets('Bento Cards resolve Whisper Tints in Light Mode and Deep Jewel Tones in Dark Mode with crisp contrast',
+      (WidgetTester tester) async {
+    await ThemeService.instance.initializeTheme();
+    expect(AppColors.isDarkMode, isFalse);
+
+    // Light Mode checks
+    final lightSageGrad = AppColors.resolveBentoGradient(AppColors.themeSageEmerald);
+    expect(lightSageGrad.colors.first, const Color(0xFFF0FDF4));
+    expect(lightSageGrad.colors.last, const Color(0xFFDCFCE7));
+    expect(AppColors.bentoTextPrimary(), const Color(0xFF0F172A));
+    expect(AppColors.bentoPodText, const Color(0xFF0F172A));
+    expect(AppColors.bentoLaunchButtonIcon(), const Color(0xFF0F172A));
+
+    // Create a deck and render MainNavigationShell in Light Mode
+    await StudyRepository.instance.addSubject(name: 'Algorithms', colorValue: AppColors.themeSageEmerald);
+    final sub = StudyRepository.instance.subjects.first;
+    await StudyRepository.instance.addDeck(
+      title: 'Graph Traversal',
+      description: 'BFS, DFS, Dijkstra',
+      subjectId: sub.id,
+      colorValue: AppColors.themeSageEmerald,
+    );
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: MainNavigationShell(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Verify deck card rendered with launch button and progress capsule
+    expect(find.text('Graph Traversal'), findsOneWidget);
+    expect(find.byIcon(Icons.north_east_rounded), findsWidgets);
+    expect(find.textContaining('Progress •'), findsWidgets);
+
+    // Switch to Midnight (Dark Mode)
+    await ThemeService.instance.toggleTheme();
+    expect(AppColors.isDarkMode, isTrue);
+
+    final darkSageGrad = AppColors.resolveBentoGradient(AppColors.themeSageEmerald);
+    expect(darkSageGrad.colors.first, const Color(0xFF1B4332));
+    expect(darkSageGrad.colors.last, const Color(0xFF2D6A4F));
+    expect(AppColors.bentoTextPrimary(), const Color(0xFFF8FAFC));
+    expect(AppColors.bentoPodText, Colors.white);
+    expect(AppColors.bentoLaunchButtonIcon(), Colors.white);
+
+    // Re-pump widget to test dark mode render
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: MainNavigationShell(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Graph Traversal'), findsOneWidget);
+
+    // Reset to light mode
+    await ThemeService.instance.toggleTheme();
+    expect(AppColors.isDarkMode, isFalse);
+  });
+
+  testWidgets('QuickCreateSheet renders tactile horizontal scrollable subject chips and circular color swatch selector dots with active rings',
+      (WidgetTester tester) async {
+    await StudyRepository.instance.addSubject(name: 'Distributed Systems', colorValue: AppColors.themeRoyalIndigo);
+    await StudyRepository.instance.addSubject(name: 'Compilers', colorValue: AppColors.themeRoseCoral);
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: MainNavigationShell(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Open QuickCreateSheet via center + dock button
+    await tester.tap(find.byIcon(Icons.add_rounded).first);
+    await tester.pumpAndSettle();
+
+    // Verify horizontal scrollable Subject Category chips inside QuickCreateSheet
+    final quickSheet = find.byType(QuickCreateSheet);
+    expect(find.descendant(of: quickSheet, matching: find.text('Distributed Systems')), findsOneWidget);
+    expect(find.descendant(of: quickSheet, matching: find.text('Compilers')), findsOneWidget);
+
+    // Tap Compilers chip
+    await tester.tap(find.descendant(of: quickSheet, matching: find.text('Compilers')));
+    await tester.pumpAndSettle();
+
+    // Verify all 6 circular color swatch labels exist
+    for (final option in AppColors.bentoThemeOptions) {
+      await tester.ensureVisible(find.text(option.label));
+      expect(find.text(option.label), findsOneWidget);
+    }
+
+    // Select Amber palette dot
+    await tester.ensureVisible(find.text('Amber'));
+    await tester.tap(find.text('Amber'));
+    await tester.pumpAndSettle();
+
+    // Verify active selection ring
+    expect(find.byIcon(Icons.check_rounded), findsWidgets);
+  });
+
+  testWidgets('DeckDetailScreen header uses Bento tokens with crisp dark text in Light Mode and alabaster in Dark Mode',
+      (WidgetTester tester) async {
+    await ThemeService.instance.initializeTheme();
+    expect(AppColors.isDarkMode, isFalse);
+
+    await StudyRepository.instance.addSubject(
+      name: 'Cloud Architecture',
+      colorValue: AppColors.themeElectricOcean,
+    );
+    final sub = StudyRepository.instance.subjects.first;
+    await StudyRepository.instance.addDeck(
+      title: 'Kubernetes Ingress & Mesh',
+      description: 'Envoy, Istio, NGINX',
+      subjectId: sub.id,
+      colorValue: AppColors.themeElectricOcean,
+    );
+    final deck = StudyRepository.instance.decks.first;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: DeckDetailScreen(deckId: deck.id),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Title should use dark bentoTextPrimary in Light Mode, NOT white
+    final titleText = tester.widget<Text>(find.text('Kubernetes Ingress & Mesh'));
+    expect(titleText.style?.color, const Color(0xFF0F172A));
+
+    // Stats Bar Total number should use bentoTextPrimary
+    expect(find.text('Total'), findsOneWidget);
+    expect(find.text('Mastered'), findsOneWidget);
+
+    // Switch to Dark Mode
+    await ThemeService.instance.toggleTheme();
+    expect(AppColors.isDarkMode, isTrue);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: DeckDetailScreen(deckId: deck.id),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final darkTitleText = tester.widget<Text>(find.text('Kubernetes Ingress & Mesh'));
+    expect(darkTitleText.style?.color, const Color(0xFFF8FAFC));
+
+    // Reset to light mode
+    await ThemeService.instance.toggleTheme();
+    expect(AppColors.isDarkMode, isFalse);
+  });
+
+  testWidgets('CurvedBottomSheet renders ClipPath with notched silhouette and top-center close button',
+      (WidgetTester tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Builder(
+          builder: (context) => Scaffold(
+            body: Center(
+              child: ElevatedButton(
+                onPressed: () {
+                  CurvedBottomSheet.show<void>(
+                    context: context,
+                    title: 'Test Notched Sheet',
+                    subtitle: 'Testing silhouette clipping',
+                    child: const Text('Sheet Content Inside'),
+                  );
+                },
+                child: const Text('Open Sheet'),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Tap to open sheet
+    await tester.tap(find.text('Open Sheet'));
+    await tester.pumpAndSettle();
+
+    // Verify CurvedBottomSheet is visible
+    expect(find.byType(CurvedBottomSheet), findsOneWidget);
+    expect(find.text('Test Notched Sheet'), findsOneWidget);
+    expect(find.text('Sheet Content Inside'), findsOneWidget);
+
+    // Verify ClipPath wraps scroll view
+    expect(find.descendant(of: find.byType(CurvedBottomSheet), matching: find.byType(ClipPath)), findsWidgets);
+
+    // Verify close button is present and dismisses sheet
+    final closeBtn = find.descendant(of: find.byType(CurvedBottomSheet), matching: find.byIcon(Icons.close_rounded));
+    expect(closeBtn, findsOneWidget);
+    await tester.tap(closeBtn);
+    await tester.pumpAndSettle();
+
+    expect(find.byType(CurvedBottomSheet), findsNothing);
+  });
 }
+

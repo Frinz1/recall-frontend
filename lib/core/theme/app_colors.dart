@@ -123,97 +123,222 @@ class AppColors {
     (value: themeRoseCoral, label: 'Coral'),
   ];
 
-  /// Generates a rich, vibrant Full-Card Surface Gradient for any Deck or Subject colorValue.
+  /// Generates a strategic Color-Blocked Bento surface gradient.
+  /// Light Mode: Soft, pastel/milky whisper surface tints with crisp dark text.
+  /// Dark Mode: Rich, deep jewel tones with alabaster text.
   static LinearGradient resolveBentoGradient(int colorValue) {
     final rgb = colorValue & 0xFFFFFF;
-    if (rgb == (themeSageEmerald & 0xFFFFFF) || rgb == 0x10B981 || rgb == 0x059669) {
-      return const LinearGradient(
-        colors: [Color(0xFF1B4332), Color(0xFF2D6A4F)],
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-      );
-    }
-    if (rgb == (themeRoyalIndigo & 0xFFFFFF) || rgb == 0x6366F1 || rgb == 0x4F46E5) {
-      return const LinearGradient(
-        colors: [Color(0xFF312E81), Color(0xFF4338CA)],
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-      );
-    }
-    if (rgb == (themeSoftLavender & 0xFFFFFF) || rgb == 0xA855F7 || rgb == 0x9333EA) {
-      return const LinearGradient(
-        colors: [Color(0xFF4C1D95), Color(0xFF6D28D9)],
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-      );
-    }
-    if (rgb == (themeElectricOcean & 0xFFFFFF) ||
-        rgb == 0x3B82F6 ||
-        rgb == 0x38BDF8 ||
-        rgb == 0x06B6D4) {
-      return const LinearGradient(
-        colors: [Color(0xFF0C4A6E), Color(0xFF0284C7)],
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-      );
-    }
-    if (rgb == (themeWarmAmber & 0xFFFFFF) || rgb == 0xF59E0B || rgb == 0xD97706) {
-      return const LinearGradient(
-        colors: [Color(0xFF78350F), Color(0xFFB45309)],
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-      );
-    }
-    if (rgb == (themeRoseCoral & 0xFFFFFF) ||
-        rgb == 0xEF4444 ||
-        rgb == 0xEC4899 ||
-        rgb == 0xE11D48) {
-      return const LinearGradient(
-        colors: [Color(0xFF881337), Color(0xFFBE123C)],
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-      );
-    }
+    if (isDarkMode) {
+      if (rgb == (themeSageEmerald & 0xFFFFFF) || rgb == 0x10B981 || rgb == 0x059669) {
+        return const LinearGradient(
+          colors: [Color(0xFF1B4332), Color(0xFF2D6A4F)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        );
+      }
+      if (rgb == (themeRoyalIndigo & 0xFFFFFF) || rgb == 0x6366F1 || rgb == 0x4F46E5) {
+        return const LinearGradient(
+          colors: [Color(0xFF312E81), Color(0xFF4338CA)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        );
+      }
+      if (rgb == (themeSoftLavender & 0xFFFFFF) || rgb == 0xA855F7 || rgb == 0x9333EA) {
+        return const LinearGradient(
+          colors: [Color(0xFF4C1D95), Color(0xFF6D28D9)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        );
+      }
+      if (rgb == (themeElectricOcean & 0xFFFFFF) ||
+          rgb == 0x3B82F6 ||
+          rgb == 0x38BDF8 ||
+          rgb == 0x06B6D4) {
+        return const LinearGradient(
+          colors: [Color(0xFF0C4A6E), Color(0xFF0284C7)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        );
+      }
+      if (rgb == (themeWarmAmber & 0xFFFFFF) || rgb == 0xF59E0B || rgb == 0xD97706) {
+        return const LinearGradient(
+          colors: [Color(0xFF78350F), Color(0xFFB45309)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        );
+      }
+      if (rgb == (themeRoseCoral & 0xFFFFFF) ||
+          rgb == 0xEF4444 ||
+          rgb == 0xEC4899 ||
+          rgb == 0xE11D48) {
+        return const LinearGradient(
+          colors: [Color(0xFF881337), Color(0xFFBE123C)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        );
+      }
 
-    final base = Color(0xFF000000 | rgb);
-    final hsl = HSLColor.fromColor(base);
-    final darkStart = hsl.withLightness((hsl.lightness * 0.42).clamp(0.16, 0.32)).toColor();
-    final richEnd = hsl.withLightness((hsl.lightness * 0.65).clamp(0.28, 0.48)).toColor();
-    return LinearGradient(
-      colors: [darkStart, richEnd],
-      begin: Alignment.topLeft,
-      end: Alignment.bottomRight,
-    );
+      final base = Color(0xFF000000 | rgb);
+      final hsl = HSLColor.fromColor(base);
+      final darkStart = hsl.withLightness((hsl.lightness * 0.42).clamp(0.16, 0.32)).toColor();
+      final richEnd = hsl.withLightness((hsl.lightness * 0.65).clamp(0.28, 0.48)).toColor();
+      return LinearGradient(
+        colors: [darkStart, richEnd],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      );
+    } else {
+      // Light Mode: Whisper pastel surface tints (Pale Sage, Soft Lilac, Ice Blue, Warm Amber, Rose, Soft Indigo)
+      if (rgb == (themeSageEmerald & 0xFFFFFF) || rgb == 0x10B981 || rgb == 0x059669) {
+        return const LinearGradient(
+          colors: [Color(0xFFF0FDF4), Color(0xFFDCFCE7)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        );
+      }
+      if (rgb == (themeRoyalIndigo & 0xFFFFFF) || rgb == 0x6366F1 || rgb == 0x4F46E5) {
+        return const LinearGradient(
+          colors: [Color(0xFFEEF2FF), Color(0xFFE0E7FF)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        );
+      }
+      if (rgb == (themeSoftLavender & 0xFFFFFF) || rgb == 0xA855F7 || rgb == 0x9333EA) {
+        return const LinearGradient(
+          colors: [Color(0xFFFAF5FF), Color(0xFFF3E8FF)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        );
+      }
+      if (rgb == (themeElectricOcean & 0xFFFFFF) ||
+          rgb == 0x3B82F6 ||
+          rgb == 0x38BDF8 ||
+          rgb == 0x06B6D4) {
+        return const LinearGradient(
+          colors: [Color(0xFFF0F9FF), Color(0xFFE0F2FE)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        );
+      }
+      if (rgb == (themeWarmAmber & 0xFFFFFF) || rgb == 0xF59E0B || rgb == 0xD97706) {
+        return const LinearGradient(
+          colors: [Color(0xFFFFFBEB), Color(0xFFFEF3C7)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        );
+      }
+      if (rgb == (themeRoseCoral & 0xFFFFFF) ||
+          rgb == 0xEF4444 ||
+          rgb == 0xEC4899 ||
+          rgb == 0xE11D48) {
+        return const LinearGradient(
+          colors: [Color(0xFFFFF1F2), Color(0xFFFFE4E6)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        );
+      }
+
+      final base = Color(0xFF000000 | rgb);
+      final hsl = HSLColor.fromColor(base);
+      final lightStart = hsl.withLightness(0.97).withSaturation((hsl.saturation * 0.45).clamp(0.20, 0.55)).toColor();
+      final lightEnd = hsl.withLightness(0.91).withSaturation((hsl.saturation * 0.55).clamp(0.25, 0.65)).toColor();
+      return LinearGradient(
+        colors: [lightStart, lightEnd],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      );
+    }
   }
 
-  /// Resolves a bright, high-contrast accent tint for borders/progress bars on a Bento surface.
+  /// Resolves a high-contrast accent tint for borders, icons, and progress bars on a Bento surface.
   static Color resolveBentoAccent(int colorValue) {
     final rgb = colorValue & 0xFFFFFF;
-    if (rgb == (themeSageEmerald & 0xFFFFFF) || rgb == 0x10B981) {
-      return const Color(0xFF6EE7B7);
+    if (isDarkMode) {
+      if (rgb == (themeSageEmerald & 0xFFFFFF) || rgb == 0x10B981) {
+        return const Color(0xFF6EE7B7);
+      }
+      if (rgb == (themeRoyalIndigo & 0xFFFFFF) || rgb == 0x6366F1) {
+        return const Color(0xFFA5B4FC);
+      }
+      if (rgb == (themeSoftLavender & 0xFFFFFF) || rgb == 0xA855F7) {
+        return const Color(0xFFD8B4FE);
+      }
+      if (rgb == (themeElectricOcean & 0xFFFFFF) ||
+          rgb == 0x3B82F6 ||
+          rgb == 0x38BDF8 ||
+          rgb == 0x06B6D4) {
+        return const Color(0xFF7DD3FC);
+      }
+      if (rgb == (themeWarmAmber & 0xFFFFFF) || rgb == 0xF59E0B) {
+        return const Color(0xFFFCD34D);
+      }
+      if (rgb == (themeRoseCoral & 0xFFFFFF) || rgb == 0xEF4444 || rgb == 0xEC4899) {
+        return const Color(0xFFFDA4AF);
+      }
+      final base = Color(0xFF000000 | rgb);
+      final hsl = HSLColor.fromColor(base);
+      return hsl.withLightness(0.75).toColor();
+    } else {
+      // Light Mode: Rich, saturated anchor accent
+      if (rgb == (themeSageEmerald & 0xFFFFFF) || rgb == 0x10B981) {
+        return const Color(0xFF059669);
+      }
+      if (rgb == (themeRoyalIndigo & 0xFFFFFF) || rgb == 0x6366F1) {
+        return const Color(0xFF4F46E5);
+      }
+      if (rgb == (themeSoftLavender & 0xFFFFFF) || rgb == 0xA855F7) {
+        return const Color(0xFF7E22CE);
+      }
+      if (rgb == (themeElectricOcean & 0xFFFFFF) ||
+          rgb == 0x3B82F6 ||
+          rgb == 0x38BDF8 ||
+          rgb == 0x06B6D4) {
+        return const Color(0xFF0284C7);
+      }
+      if (rgb == (themeWarmAmber & 0xFFFFFF) || rgb == 0xF59E0B) {
+        return const Color(0xFFD97706);
+      }
+      if (rgb == (themeRoseCoral & 0xFFFFFF) || rgb == 0xEF4444 || rgb == 0xEC4899) {
+        return const Color(0xFFE11D48);
+      }
+      final base = Color(0xFF000000 | rgb);
+      final hsl = HSLColor.fromColor(base);
+      return hsl.withLightness(0.40).toColor();
     }
-    if (rgb == (themeRoyalIndigo & 0xFFFFFF) || rgb == 0x6366F1) {
-      return const Color(0xFFA5B4FC);
-    }
-    if (rgb == (themeSoftLavender & 0xFFFFFF) || rgb == 0xA855F7) {
-      return const Color(0xFFD8B4FE);
-    }
-    if (rgb == (themeElectricOcean & 0xFFFFFF) ||
-        rgb == 0x3B82F6 ||
-        rgb == 0x38BDF8 ||
-        rgb == 0x06B6D4) {
-      return const Color(0xFF7DD3FC);
-    }
-    if (rgb == (themeWarmAmber & 0xFFFFFF) || rgb == 0xF59E0B) {
-      return const Color(0xFFFCD34D);
-    }
-    if (rgb == (themeRoseCoral & 0xFFFFFF) || rgb == 0xEF4444 || rgb == 0xEC4899) {
-      return const Color(0xFFFDA4AF);
-    }
-    final base = Color(0xFF000000 | rgb);
-    final hsl = HSLColor.fromColor(base);
-    return hsl.withLightness(0.75).toColor();
   }
+
+  // Bento Card Typographic & Component Tokens
+  static Color bentoTextPrimary([int? colorValue]) =>
+      isDarkMode ? const Color(0xFFF8FAFC) : const Color(0xFF0F172A);
+  static Color bentoTextSecondary([int? colorValue]) =>
+      isDarkMode ? const Color(0xFFCBD5E1) : const Color(0xFF334155);
+  static Color bentoTextMuted([int? colorValue]) =>
+      isDarkMode ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+
+  static Color bentoBorderColor(int colorValue) =>
+      resolveBentoAccent(colorValue).withValues(alpha: isDarkMode ? 0.42 : 0.32);
+
+  // Neutral Translucent / Dark Pods for Status Tags
+  static Color get bentoPodBackground =>
+      isDarkMode ? Colors.black.withValues(alpha: 0.32) : Colors.white.withValues(alpha: 0.72);
+  static Color get bentoPodBorder =>
+      isDarkMode ? Colors.white.withValues(alpha: 0.16) : const Color(0xFF0F172A).withValues(alpha: 0.10);
+  static Color get bentoPodText =>
+      isDarkMode ? Colors.white : const Color(0xFF0F172A);
+
+  // Top-Right Launch Action Button Tokens
+  static Color bentoLaunchButtonBg([int? colorValue]) =>
+      isDarkMode ? Colors.white.withValues(alpha: 0.20) : Colors.white;
+  static Color bentoLaunchButtonBorder([int? colorValue]) =>
+      isDarkMode ? Colors.white.withValues(alpha: 0.28) : const Color(0xFFCBD5E1);
+  static Color bentoLaunchButtonIcon([int? colorValue]) =>
+      isDarkMode ? Colors.white : const Color(0xFF0F172A);
+
+  // Progress Bar Tokens
+  static Color bentoProgressTrackBg([int? colorValue]) =>
+      isDarkMode ? Colors.black.withValues(alpha: 0.28) : Colors.black.withValues(alpha: 0.08);
+  static Color bentoProgressBarColor(int colorValue) =>
+      isDarkMode ? Colors.white : resolveBentoAccent(colorValue);
 
   /// Smart domain-aware icon resolver for any subject name across all disciplines.
   static IconData? resolveSubjectIcon(String subjectName) {

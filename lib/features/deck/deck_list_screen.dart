@@ -244,16 +244,22 @@ class _DeckListScreenState extends State<DeckListScreen> {
     }
 
     String statusLabel;
+    Color statusDotColor;
     if (deck.scheduledDueCount > 0) {
       statusLabel = '${deck.scheduledDueCount} due today';
+      statusDotColor = AppColors.warning;
     } else if (deck.newCardsCount > 0) {
       statusLabel = '${deck.newCardsCount} new';
+      statusDotColor = AppColors.accentCyan;
     } else if (deck.totalCards == 0) {
       statusLabel = '0 cards • New deck';
+      statusDotColor = AppColors.textMuted;
     } else if (deck.unmasteredCount > 0) {
       statusLabel = '${deck.unmasteredCount} learning';
+      statusDotColor = accent;
     } else {
       statusLabel = '100% Mastered ✨';
+      statusDotColor = AppColors.success;
     }
 
     return Container(
@@ -264,12 +270,12 @@ class _DeckListScreenState extends State<DeckListScreen> {
         border: Border.all(
           color: deck.isFavorite
               ? AppColors.primaryLight.withValues(alpha: 0.85)
-              : accent.withValues(alpha: 0.42),
+              : AppColors.bentoBorderColor(deck.colorValue),
           width: 1.4,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.30),
+            color: Colors.black.withValues(alpha: AppColors.isDarkMode ? 0.30 : 0.05),
             blurRadius: 16,
             offset: const Offset(0, 8),
           ),
@@ -292,7 +298,7 @@ class _DeckListScreenState extends State<DeckListScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Top Row: Status Pill (Left) & Star + Edit + Delete + Circular Arrow (Right)
+                // Top Row: Neutral Status Pod (Left) & Star + Edit + Delete + Launch Button (Right)
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -300,9 +306,18 @@ class _DeckListScreenState extends State<DeckListScreen> {
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 5),
                         decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.28),
+                          color: AppColors.bentoPodBackground,
                           borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+                          border: Border.all(color: AppColors.bentoPodBorder),
+                          boxShadow: AppColors.isDarkMode
+                              ? null
+                              : [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.04),
+                                    blurRadius: 4,
+                                    offset: const Offset(0, 1),
+                                  ),
+                                ],
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
@@ -311,9 +326,7 @@ class _DeckListScreenState extends State<DeckListScreen> {
                               width: 7,
                               height: 7,
                               decoration: BoxDecoration(
-                                color: deck.scheduledDueCount > 0
-                                    ? AppColors.primaryLight
-                                    : accent,
+                                color: statusDotColor,
                                 shape: BoxShape.circle,
                               ),
                             ),
@@ -324,8 +337,9 @@ class _DeckListScreenState extends State<DeckListScreen> {
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: AppTypography.badge.copyWith(
-                                  color: Colors.white,
+                                  color: AppColors.bentoPodText,
                                   fontSize: 11,
+                                  fontWeight: FontWeight.w600,
                                 ),
                               ),
                             ),
@@ -359,13 +373,22 @@ class _DeckListScreenState extends State<DeckListScreen> {
                             height: 34,
                             margin: const EdgeInsets.only(right: 6),
                             decoration: BoxDecoration(
-                              color: Colors.black.withValues(alpha: 0.25),
+                              color: AppColors.isDarkMode
+                                  ? Colors.black.withValues(alpha: 0.25)
+                                  : Colors.white.withValues(alpha: 0.85),
                               shape: BoxShape.circle,
+                              border: Border.all(
+                                color: AppColors.isDarkMode
+                                    ? Colors.white.withValues(alpha: 0.12)
+                                    : AppColors.borderSubtle,
+                              ),
                             ),
                             child: Icon(
                               deck.isFavorite ? Icons.star_rounded : Icons.star_outline_rounded,
                               size: 18,
-                              color: deck.isFavorite ? AppColors.primaryLight : Colors.white70,
+                              color: deck.isFavorite
+                                  ? AppColors.primary
+                                  : (AppColors.isDarkMode ? Colors.white70 : AppColors.textMuted),
                             ),
                           ),
                         ),
@@ -377,13 +400,20 @@ class _DeckListScreenState extends State<DeckListScreen> {
                             height: 34,
                             margin: const EdgeInsets.only(right: 6),
                             decoration: BoxDecoration(
-                              color: Colors.black.withValues(alpha: 0.25),
+                              color: AppColors.isDarkMode
+                                  ? Colors.black.withValues(alpha: 0.25)
+                                  : Colors.white.withValues(alpha: 0.85),
                               shape: BoxShape.circle,
+                              border: Border.all(
+                                color: AppColors.isDarkMode
+                                    ? Colors.white.withValues(alpha: 0.12)
+                                    : AppColors.borderSubtle,
+                              ),
                             ),
-                            child: const Icon(
+                            child: Icon(
                               Icons.edit_outlined,
                               size: 16,
-                              color: Colors.white,
+                              color: AppColors.isDarkMode ? Colors.white : AppColors.textSecondary,
                             ),
                           ),
                         ),
@@ -400,31 +430,47 @@ class _DeckListScreenState extends State<DeckListScreen> {
                             height: 34,
                             margin: const EdgeInsets.only(right: 6),
                             decoration: BoxDecoration(
-                              color: Colors.black.withValues(alpha: 0.25),
+                              color: AppColors.isDarkMode
+                                  ? Colors.black.withValues(alpha: 0.25)
+                                  : Colors.white.withValues(alpha: 0.85),
                               shape: BoxShape.circle,
+                              border: Border.all(
+                                color: AppColors.isDarkMode
+                                    ? Colors.white.withValues(alpha: 0.12)
+                                    : AppColors.borderSubtle,
+                              ),
                             ),
-                            child: const Icon(
+                            child: Icon(
                               Icons.delete_outline_rounded,
                               size: 17,
-                              color: Colors.white70,
+                              color: AppColors.isDarkMode ? Colors.white70 : AppColors.textMuted,
                             ),
                           ),
                         ),
-                        // Top-Right Circular Arrow Action Button
+                        // Top-Right Circular Arrow Action Launch Button
                         Container(
                           width: 34,
                           height: 34,
                           decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.22),
+                            color: AppColors.bentoLaunchButtonBg(deck.colorValue),
                             shape: BoxShape.circle,
                             border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.30),
+                              color: AppColors.bentoLaunchButtonBorder(deck.colorValue),
                             ),
+                            boxShadow: AppColors.isDarkMode
+                                ? null
+                                : [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(alpha: 0.06),
+                                      blurRadius: 6,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ],
                           ),
-                          child: const Icon(
+                          child: Icon(
                             Icons.north_east_rounded,
                             size: 17,
-                            color: Colors.white,
+                            color: AppColors.bentoLaunchButtonIcon(deck.colorValue),
                           ),
                         ),
                       ],
@@ -438,16 +484,24 @@ class _DeckListScreenState extends State<DeckListScreen> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.14),
+                      color: AppColors.isDarkMode
+                          ? Colors.white.withValues(alpha: 0.14)
+                          : Colors.white.withValues(alpha: 0.85),
                       borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: AppColors.isDarkMode
+                            ? Colors.white.withValues(alpha: 0.20)
+                            : AppColors.borderSubtle,
+                      ),
                     ),
                     child: Text(
                       subject.name,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: AppTypography.badge.copyWith(
-                        color: Colors.white,
+                        color: AppColors.bentoTextPrimary(deck.colorValue),
                         fontSize: 10,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ),
@@ -460,8 +514,9 @@ class _DeckListScreenState extends State<DeckListScreen> {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: AppTypography.displayMedium.copyWith(
-                    color: Colors.white,
+                    color: AppColors.bentoTextPrimary(deck.colorValue),
                     fontSize: 20,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
                 const SizedBox(height: 5),
@@ -472,14 +527,14 @@ class _DeckListScreenState extends State<DeckListScreen> {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: AppTypography.bodySmall.copyWith(
-                    color: Colors.white.withValues(alpha: 0.84),
+                    color: AppColors.bentoTextSecondary(deck.colorValue),
                     fontSize: 13,
                   ),
                 ),
 
                 const SizedBox(height: 16),
 
-                // Mastery Progress Footer
+                // Mastery Progress Footer with Thick Rounded Capsule
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -489,8 +544,9 @@ class _DeckListScreenState extends State<DeckListScreen> {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: AppTypography.badge.copyWith(
-                          color: Colors.white,
+                          color: AppColors.bentoTextPrimary(deck.colorValue),
                           fontSize: 12,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
                     ),
@@ -501,7 +557,7 @@ class _DeckListScreenState extends State<DeckListScreen> {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: AppTypography.bodySmall.copyWith(
-                          color: Colors.white.withValues(alpha: 0.82),
+                          color: AppColors.bentoTextMuted(deck.colorValue),
                           fontSize: 12,
                         ),
                       ),
@@ -510,12 +566,14 @@ class _DeckListScreenState extends State<DeckListScreen> {
                 ),
                 const SizedBox(height: 8),
                 ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(10),
                   child: LinearProgressIndicator(
                     value: progressValue,
-                    backgroundColor: Colors.black.withValues(alpha: 0.28),
-                    valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
-                    minHeight: 8,
+                    backgroundColor: AppColors.bentoProgressTrackBg(),
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      AppColors.bentoProgressBarColor(deck.colorValue),
+                    ),
+                    minHeight: 10,
                   ),
                 ),
               ],

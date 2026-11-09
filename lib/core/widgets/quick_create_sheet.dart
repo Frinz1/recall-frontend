@@ -282,7 +282,8 @@ class _QuickCreateSheetState extends State<QuickCreateSheet> {
 
   Widget _buildDeckForm() {
     final subjects = StudyRepository.instance.subjects;
-    if (_selectedSubjectId == null && subjects.isNotEmpty) {
+    if (subjects.isNotEmpty &&
+        (_selectedSubjectId == null || !subjects.any((s) => s.id == _selectedSubjectId))) {
       _selectedSubjectId = subjects.first.id;
     }
 
@@ -341,66 +342,88 @@ class _QuickCreateSheetState extends State<QuickCreateSheet> {
             ),
           )
         else
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: subjects.map((s) {
-              final isSelected = _selectedSubjectId == s.id;
-              final accent = AppColors.resolveBentoAccent(s.colorValue);
-              final icon = AppColors.resolveSubjectIcon(s.name);
-              return GestureDetector(
-                onTap: () => setState(() => _selectedSubjectId = s.id),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 160),
-                  padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
-                  decoration: BoxDecoration(
-                    gradient: isSelected ? AppColors.resolveBentoGradient(s.colorValue) : null,
-                    color: isSelected ? null : AppColors.bgSurface2,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(
-                      color: isSelected ? accent : AppColors.borderSubtle,
-                      width: isSelected ? 1.6 : 1.0,
+          SizedBox(
+            height: 48,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              physics: const BouncingScrollPhysics(),
+              itemCount: subjects.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 10),
+              itemBuilder: (context, index) {
+                final s = subjects[index];
+                final isSelected = _selectedSubjectId == s.id;
+                final accent = AppColors.resolveBentoAccent(s.colorValue);
+                final icon = AppColors.resolveSubjectIcon(s.name);
+                return GestureDetector(
+                  onTap: () => setState(() => _selectedSubjectId = s.id),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 180),
+                    curve: Curves.easeOutCubic,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? (AppColors.isDarkMode
+                              ? accent.withValues(alpha: 0.22)
+                              : accent.withValues(alpha: 0.12))
+                          : AppColors.bgSurface2,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: isSelected ? accent : AppColors.borderSubtle,
+                        width: isSelected ? 2.0 : 1.0,
+                      ),
+                      boxShadow: isSelected
+                          ? [
+                              BoxShadow(
+                                color: accent.withValues(alpha: AppColors.isDarkMode ? 0.35 : 0.18),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ]
+                          : null,
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (icon != null)
+                          Icon(
+                            icon,
+                            size: 16,
+                            color: isSelected ? accent : AppColors.textMuted,
+                          )
+                        else
+                          Container(
+                            width: 9,
+                            height: 9,
+                            decoration: BoxDecoration(
+                              color: accent,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                        const SizedBox(width: 8),
+                        Text(
+                          s.name,
+                          style: AppTypography.badge.copyWith(
+                            color: isSelected
+                                ? (AppColors.isDarkMode ? Colors.white : AppColors.textPrimary)
+                                : AppColors.textSecondary,
+                            fontSize: 13,
+                            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                          ),
+                        ),
+                        if (isSelected) ...[
+                          const SizedBox(width: 7),
+                          Icon(
+                            Icons.check_circle_rounded,
+                            size: 15,
+                            color: accent,
+                          ),
+                        ],
+                      ],
                     ),
                   ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (icon != null)
-                        Icon(
-                          icon,
-                          size: 15,
-                          color: isSelected ? AppColors.textPrimary : accent,
-                        )
-                      else
-                        Container(
-                          width: 8,
-                          height: 8,
-                          decoration: BoxDecoration(
-                            color: accent,
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                      const SizedBox(width: 7),
-                      Flexible(
-                        child: Text(
-                          s.name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: AppTypography.badge.copyWith(
-                            color: isSelected ? AppColors.textPrimary : AppColors.textSecondary,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ),
-                      if (isSelected) ...[
-                        const SizedBox(width: 6),
-                        const Icon(Icons.check_circle_rounded, size: 14, color: Colors.white),
-                      ],
-                    ],
-                  ),
-                ),
-              );
-            }).toList(),
+                );
+              },
+            ),
           ),
         const SizedBox(height: 20),
         _buildFieldLabel('CARD SURFACE THEME PALETTE'),
@@ -455,11 +478,21 @@ class _QuickCreateSheetState extends State<QuickCreateSheet> {
         const SizedBox(height: 8),
         Container(
           width: double.infinity,
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(18),
           decoration: BoxDecoration(
             gradient: AppColors.resolveBentoGradient(_selectedSubjectColor),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: accent.withValues(alpha: 0.45), width: 1.2),
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(
+              color: AppColors.bentoBorderColor(_selectedSubjectColor),
+              width: 1.3,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: AppColors.isDarkMode ? 0.30 : 0.06),
+                blurRadius: 14,
+                offset: const Offset(0, 6),
+              ),
+            ],
           ),
           child: Row(
             children: [
@@ -467,16 +500,31 @@ class _QuickCreateSheetState extends State<QuickCreateSheet> {
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.16),
+                  color: AppColors.isDarkMode
+                      ? Colors.white.withValues(alpha: 0.16)
+                      : Colors.white.withValues(alpha: 0.90),
                   borderRadius: BorderRadius.circular(14),
+                  boxShadow: AppColors.isDarkMode
+                      ? null
+                      : [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.06),
+                            blurRadius: 6,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
                 ),
                 child: Center(
                   child: previewIcon != null
-                      ? Icon(previewIcon, color: Colors.white, size: 22)
+                      ? Icon(
+                          previewIcon,
+                          color: AppColors.isDarkMode ? Colors.white : accent,
+                          size: 22,
+                        )
                       : Text(
                           previewMonogram,
                           style: AppTypography.titleMedium.copyWith(
-                            color: Colors.white,
+                            color: AppColors.isDarkMode ? Colors.white : accent,
                             fontWeight: FontWeight.w800,
                           ),
                         ),
@@ -491,26 +539,45 @@ class _QuickCreateSheetState extends State<QuickCreateSheet> {
                       previewName,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: AppTypography.titleMedium.copyWith(color: Colors.white),
+                      style: AppTypography.titleMedium.copyWith(
+                        color: AppColors.bentoTextPrimary(_selectedSubjectColor),
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       'Color-blocked Bento subject surface',
                       style: AppTypography.bodySmall.copyWith(
-                        color: Colors.white.withValues(alpha: 0.8),
+                        color: AppColors.bentoTextSecondary(_selectedSubjectColor),
                       ),
                     ),
                   ],
                 ),
               ),
               Container(
-                width: 32,
-                height: 32,
+                width: 34,
+                height: 34,
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.18),
+                  color: AppColors.bentoLaunchButtonBg(_selectedSubjectColor),
                   shape: BoxShape.circle,
+                  border: Border.all(
+                    color: AppColors.bentoLaunchButtonBorder(_selectedSubjectColor),
+                  ),
+                  boxShadow: AppColors.isDarkMode
+                      ? null
+                      : [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.06),
+                            blurRadius: 6,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
                 ),
-                child: const Icon(Icons.north_east_rounded, color: Colors.white, size: 16),
+                child: Icon(
+                  Icons.north_east_rounded,
+                  color: AppColors.bentoLaunchButtonIcon(_selectedSubjectColor),
+                  size: 16,
+                ),
               ),
             ],
           ),
@@ -531,62 +598,94 @@ class _QuickCreateSheetState extends State<QuickCreateSheet> {
     required int selectedValue,
     required ValueChanged<int> onSelect,
   }) {
-    return GridView.count(
-      crossAxisCount: 3,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      mainAxisSpacing: 10,
-      crossAxisSpacing: 10,
-      childAspectRatio: 2.35,
-      children: AppColors.bentoThemeOptions.map((option) {
-        final isSelected = (selectedValue & 0xFFFFFF) == (option.value & 0xFFFFFF);
-        final accent = AppColors.resolveBentoAccent(option.value);
-        return GestureDetector(
-          onTap: () => onSelect(option.value),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 160),
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-            decoration: BoxDecoration(
-              gradient: AppColors.resolveBentoGradient(option.value),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(
-                color: isSelected ? Colors.white : accent.withValues(alpha: 0.35),
-                width: isSelected ? 2.2 : 1.0,
-              ),
-              boxShadow: isSelected
-                  ? [
-                      BoxShadow(
-                        color: accent.withValues(alpha: 0.35),
-                        blurRadius: 10,
-                        offset: const Offset(0, 3),
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      physics: const BouncingScrollPhysics(),
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: AppColors.bentoThemeOptions.map((option) {
+          final isSelected = (selectedValue & 0xFFFFFF) == (option.value & 0xFFFFFF);
+          final themeColor = Color(option.value);
+          final accent = AppColors.resolveBentoAccent(option.value);
+
+          return Padding(
+            padding: const EdgeInsets.only(right: 14),
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () => onSelect(option.value),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Circular Swatch Dot with Active Selection Ring
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 180),
+                    curve: Curves.easeOutCubic,
+                    width: 48,
+                    height: 48,
+                    padding: const EdgeInsets.all(3.5),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: isSelected ? accent : Colors.transparent,
+                        width: 2.2,
                       ),
-                    ]
-                  : null,
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                if (isSelected) ...[
-                  const Icon(Icons.check_circle_rounded, size: 15, color: Colors.white),
-                  const SizedBox(width: 5),
-                ],
-                Flexible(
-                  child: Text(
-                    option.label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppTypography.badge.copyWith(
-                      color: Colors.white,
-                      fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-                      fontSize: 12,
+                      boxShadow: isSelected
+                          ? [
+                              BoxShadow(
+                                color: accent.withValues(alpha: AppColors.isDarkMode ? 0.40 : 0.25),
+                                blurRadius: 10,
+                                offset: const Offset(0, 3),
+                              ),
+                            ]
+                          : null,
+                    ),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: themeColor,
+                        border: Border.all(
+                          color: AppColors.isDarkMode
+                              ? Colors.white.withValues(alpha: 0.25)
+                              : Colors.black.withValues(alpha: 0.12),
+                          width: 1.0,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: themeColor.withValues(alpha: 0.35),
+                            blurRadius: 6,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: isSelected
+                          ? const Center(
+                              child: Icon(
+                                Icons.check_rounded,
+                                size: 18,
+                                color: Colors.white,
+                              ),
+                            )
+                          : null,
                     ),
                   ),
-                ),
-              ],
+                  const SizedBox(height: 6),
+                  Text(
+                    option.label,
+                    style: AppTypography.badge.copyWith(
+                      fontSize: 11,
+                      fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                      color: isSelected
+                          ? (AppColors.isDarkMode ? Colors.white : AppColors.textPrimary)
+                          : AppColors.textMuted,
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-        );
-      }).toList(),
+          );
+        }).toList(),
+      ),
     );
   }
 
@@ -609,17 +708,17 @@ class _QuickCreateSheetState extends State<QuickCreateSheet> {
       hintText: hint,
       hintStyle: AppTypography.bodySmall.copyWith(color: AppColors.textMuted),
       prefixIcon: prefixIcon != null
-          ? Icon(prefixIcon, size: 19, color: AppColors.textMuted)
+          ? Icon(prefixIcon, size: 20, color: AppColors.textMuted)
           : null,
       filled: true,
       fillColor: AppColors.bgSurface2,
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(16),
         borderSide: BorderSide(color: AppColors.borderSubtle),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(16),
         borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
       ),
     );

@@ -71,6 +71,8 @@ class SubjectListScreen extends StatelessWidget {
                     final monogram = AppColors.getSubjectMonogram(sub.name);
                     final accent = AppColors.resolveBentoAccent(sub.colorValue);
 
+                    Color statusDotColor = dueCount > 0 ? AppColors.warning : accent;
+
                     return Container(
                       margin: const EdgeInsets.only(bottom: 16),
                       padding: const EdgeInsets.all(20),
@@ -78,12 +80,12 @@ class SubjectListScreen extends StatelessWidget {
                         gradient: AppColors.resolveBentoGradient(sub.colorValue),
                         borderRadius: BorderRadius.circular(24),
                         border: Border.all(
-                          color: accent.withValues(alpha: 0.42),
+                          color: AppColors.bentoBorderColor(sub.colorValue),
                           width: 1.4,
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.28),
+                            color: Colors.black.withValues(alpha: AppColors.isDarkMode ? 0.28 : 0.05),
                             blurRadius: 16,
                             offset: const Offset(0, 8),
                           ),
@@ -92,7 +94,7 @@ class SubjectListScreen extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Top Row: Status Pill (Left) + Edit / Delete / Arrow Actions (Right)
+                          // Top Row: Neutral Status Pod (Left) + Edit / Delete / Launch Button (Right)
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
@@ -100,11 +102,18 @@ class SubjectListScreen extends StatelessWidget {
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 5),
                                   decoration: BoxDecoration(
-                                    color: Colors.black.withValues(alpha: 0.28),
+                                    color: AppColors.bentoPodBackground,
                                     borderRadius: BorderRadius.circular(20),
-                                    border: Border.all(
-                                      color: Colors.white.withValues(alpha: 0.18),
-                                    ),
+                                    border: Border.all(color: AppColors.bentoPodBorder),
+                                    boxShadow: AppColors.isDarkMode
+                                        ? null
+                                        : [
+                                            BoxShadow(
+                                              color: Colors.black.withValues(alpha: 0.04),
+                                              blurRadius: 4,
+                                              offset: const Offset(0, 1),
+                                            ),
+                                          ],
                                   ),
                                   child: Row(
                                     mainAxisSize: MainAxisSize.min,
@@ -113,7 +122,7 @@ class SubjectListScreen extends StatelessWidget {
                                         width: 7,
                                         height: 7,
                                         decoration: BoxDecoration(
-                                          color: dueCount > 0 ? AppColors.primaryLight : accent,
+                                          color: statusDotColor,
                                           shape: BoxShape.circle,
                                         ),
                                       ),
@@ -126,8 +135,9 @@ class SubjectListScreen extends StatelessWidget {
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
                                           style: AppTypography.badge.copyWith(
-                                            color: Colors.white,
+                                            color: AppColors.bentoPodText,
                                             fontSize: 11,
+                                            fontWeight: FontWeight.w600,
                                           ),
                                         ),
                                       ),
@@ -150,12 +160,19 @@ class SubjectListScreen extends StatelessWidget {
                                       height: 34,
                                       margin: const EdgeInsets.only(right: 6),
                                       decoration: BoxDecoration(
-                                        color: Colors.black.withValues(alpha: 0.25),
+                                        color: AppColors.isDarkMode
+                                            ? Colors.black.withValues(alpha: 0.25)
+                                            : Colors.white.withValues(alpha: 0.85),
                                         shape: BoxShape.circle,
+                                        border: Border.all(
+                                          color: AppColors.isDarkMode
+                                              ? Colors.white.withValues(alpha: 0.12)
+                                              : AppColors.borderSubtle,
+                                        ),
                                       ),
-                                      child: const Icon(
+                                      child: Icon(
                                         Icons.edit_outlined,
-                                        color: Colors.white,
+                                        color: AppColors.isDarkMode ? Colors.white : AppColors.textSecondary,
                                         size: 16,
                                       ),
                                     ),
@@ -175,12 +192,19 @@ class SubjectListScreen extends StatelessWidget {
                                       height: 34,
                                       margin: const EdgeInsets.only(right: 6),
                                       decoration: BoxDecoration(
-                                        color: Colors.black.withValues(alpha: 0.25),
+                                        color: AppColors.isDarkMode
+                                            ? Colors.black.withValues(alpha: 0.25)
+                                            : Colors.white.withValues(alpha: 0.85),
                                         shape: BoxShape.circle,
+                                        border: Border.all(
+                                          color: AppColors.isDarkMode
+                                              ? Colors.white.withValues(alpha: 0.12)
+                                              : AppColors.borderSubtle,
+                                        ),
                                       ),
-                                      child: const Icon(
+                                      child: Icon(
                                         Icons.delete_outline_rounded,
-                                        color: Colors.white70,
+                                        color: AppColors.isDarkMode ? Colors.white70 : AppColors.textMuted,
                                         size: 17,
                                       ),
                                     ),
@@ -195,15 +219,24 @@ class SubjectListScreen extends StatelessWidget {
                                       width: 34,
                                       height: 34,
                                       decoration: BoxDecoration(
-                                        color: Colors.white.withValues(alpha: 0.22),
+                                        color: AppColors.bentoLaunchButtonBg(sub.colorValue),
                                         shape: BoxShape.circle,
                                         border: Border.all(
-                                          color: Colors.white.withValues(alpha: 0.30),
+                                          color: AppColors.bentoLaunchButtonBorder(sub.colorValue),
                                         ),
+                                        boxShadow: AppColors.isDarkMode
+                                            ? null
+                                            : [
+                                                BoxShadow(
+                                                  color: Colors.black.withValues(alpha: 0.06),
+                                                  blurRadius: 6,
+                                                  offset: const Offset(0, 2),
+                                                ),
+                                              ],
                                       ),
-                                      child: const Icon(
+                                      child: Icon(
                                         Icons.north_east_rounded,
-                                        color: Colors.white,
+                                        color: AppColors.bentoLaunchButtonIcon(sub.colorValue),
                                         size: 17,
                                       ),
                                     ),
@@ -219,19 +252,36 @@ class SubjectListScreen extends StatelessWidget {
                                 width: 48,
                                 height: 48,
                                 decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.16),
+                                  color: AppColors.isDarkMode
+                                      ? Colors.white.withValues(alpha: 0.16)
+                                      : Colors.white.withValues(alpha: 0.90),
                                   borderRadius: BorderRadius.circular(14),
                                   border: Border.all(
-                                    color: Colors.white.withValues(alpha: 0.25),
+                                    color: AppColors.isDarkMode
+                                        ? Colors.white.withValues(alpha: 0.25)
+                                        : AppColors.borderSubtle,
                                   ),
+                                  boxShadow: AppColors.isDarkMode
+                                      ? null
+                                      : [
+                                          BoxShadow(
+                                            color: Colors.black.withValues(alpha: 0.06),
+                                            blurRadius: 6,
+                                            offset: const Offset(0, 2),
+                                          ),
+                                        ],
                                 ),
                                 child: Center(
                                   child: resolvedIcon != null
-                                      ? Icon(resolvedIcon, color: Colors.white, size: 24)
+                                      ? Icon(
+                                          resolvedIcon,
+                                          color: AppColors.isDarkMode ? Colors.white : accent,
+                                          size: 24,
+                                        )
                                       : Text(
                                           monogram,
                                           style: AppTypography.titleMedium.copyWith(
-                                            color: Colors.white,
+                                            color: AppColors.isDarkMode ? Colors.white : accent,
                                             fontWeight: FontWeight.w800,
                                             fontSize: 16,
                                           ),
@@ -246,15 +296,16 @@ class SubjectListScreen extends StatelessWidget {
                                     Text(
                                       sub.name,
                                       style: AppTypography.displayMedium.copyWith(
-                                        color: Colors.white,
+                                        color: AppColors.bentoTextPrimary(sub.colorValue),
                                         fontSize: 19,
+                                        fontWeight: FontWeight.w700,
                                       ),
                                     ),
                                     const SizedBox(height: 3),
                                     Text(
                                       '$deckCount ${deckCount == 1 ? 'deck' : 'decks'} • $cardCount ${cardCount == 1 ? 'flashcard' : 'flashcards'}',
                                       style: AppTypography.bodySmall.copyWith(
-                                        color: Colors.white.withValues(alpha: 0.84),
+                                        color: AppColors.bentoTextSecondary(sub.colorValue),
                                         fontSize: 12,
                                       ),
                                     ),
@@ -273,8 +324,9 @@ class SubjectListScreen extends StatelessWidget {
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: AppTypography.badge.copyWith(
-                                    color: Colors.white,
+                                    color: AppColors.bentoTextPrimary(sub.colorValue),
                                     fontSize: 12,
+                                    fontWeight: FontWeight.w700,
                                   ),
                                 ),
                               ),
@@ -285,21 +337,23 @@ class SubjectListScreen extends StatelessWidget {
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: AppTypography.bodySmall.copyWith(
-                                    color: Colors.white.withValues(alpha: 0.82),
+                                    color: AppColors.bentoTextMuted(sub.colorValue),
                                     fontSize: 12,
                                   ),
                                 ),
                               ),
                             ],
                           ),
-                          const SizedBox(height: 7),
+                          const SizedBox(height: 8),
                           ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
+                            borderRadius: BorderRadius.circular(10),
                             child: LinearProgressIndicator(
                               value: progressValue,
-                              minHeight: 8,
-                              backgroundColor: Colors.black.withValues(alpha: 0.28),
-                              valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+                              minHeight: 10,
+                              backgroundColor: AppColors.bentoProgressTrackBg(),
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                AppColors.bentoProgressBarColor(sub.colorValue),
+                              ),
                             ),
                           ),
                         ],

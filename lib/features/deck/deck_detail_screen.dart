@@ -32,8 +32,6 @@ class DeckDetailScreen extends StatelessWidget {
           );
         }
 
-        final accent = AppColors.resolveBentoAccent(deck.colorValue);
-
         return Scaffold(
           appBar: AppBar(
             title: Text('Deck Overview', style: AppTypography.titleLarge),
@@ -90,12 +88,12 @@ class DeckDetailScreen extends StatelessWidget {
                           gradient: AppColors.resolveBentoGradient(deck.colorValue),
                           borderRadius: BorderRadius.circular(24),
                           border: Border.all(
-                            color: accent.withValues(alpha: 0.45),
+                            color: AppColors.bentoBorderColor(deck.colorValue),
                             width: 1.4,
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.28),
+                              color: Colors.black.withValues(alpha: AppColors.isDarkMode ? 0.28 : 0.05),
                               blurRadius: 16,
                               offset: const Offset(0, 8),
                             ),
@@ -109,14 +107,25 @@ class DeckDetailScreen extends StatelessWidget {
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                   decoration: BoxDecoration(
-                                    color: Colors.black.withValues(alpha: 0.28),
+                                    color: AppColors.bentoPodBackground,
                                     borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(color: AppColors.bentoPodBorder),
+                                    boxShadow: AppColors.isDarkMode
+                                        ? null
+                                        : [
+                                            BoxShadow(
+                                              color: Colors.black.withValues(alpha: 0.04),
+                                              blurRadius: 4,
+                                              offset: const Offset(0, 1),
+                                            ),
+                                          ],
                                   ),
                                   child: Text(
                                     '${deck.masteryPercentage.round()}% MASTERED',
                                     style: AppTypography.badge.copyWith(
-                                      color: Colors.white,
+                                      color: AppColors.bentoPodText,
                                       fontSize: 10,
+                                      fontWeight: FontWeight.w700,
                                     ),
                                   ),
                                 ),
@@ -125,23 +134,38 @@ class DeckDetailScreen extends StatelessWidget {
                                   Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                     decoration: BoxDecoration(
-                                      color: Colors.black.withValues(alpha: 0.28),
+                                      color: AppColors.bentoPodBackground,
                                       borderRadius: BorderRadius.circular(20),
+                                      border: Border.all(color: AppColors.bentoPodBorder),
+                                      boxShadow: AppColors.isDarkMode
+                                          ? null
+                                          : [
+                                              BoxShadow(
+                                                color: Colors.black.withValues(alpha: 0.04),
+                                                blurRadius: 4,
+                                                offset: const Offset(0, 1),
+                                              ),
+                                            ],
                                     ),
                                     child: Row(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
-                                        const Icon(
+                                        Icon(
                                           Icons.star_rounded,
                                           size: 12,
-                                          color: AppColors.primaryLight,
+                                          color: AppColors.isDarkMode
+                                              ? AppColors.primaryLight
+                                              : AppColors.primary,
                                         ),
                                         const SizedBox(width: 4),
                                         Text(
                                           'STARRED',
                                           style: AppTypography.badge.copyWith(
-                                            color: AppColors.primaryLight,
+                                            color: AppColors.isDarkMode
+                                                ? AppColors.primaryLight
+                                                : AppColors.primary,
                                             fontSize: 10,
+                                            fontWeight: FontWeight.w700,
                                           ),
                                         ),
                                       ],
@@ -153,14 +177,16 @@ class DeckDetailScreen extends StatelessWidget {
                             const SizedBox(height: 12),
                             Text(
                               deck.title,
-                              style: AppTypography.displayMedium.copyWith(color: Colors.white),
+                              style: AppTypography.displayMedium.copyWith(
+                                color: AppColors.bentoTextPrimary(deck.colorValue),
+                              ),
                             ),
                             if (deck.description.isNotEmpty) ...[
                               const SizedBox(height: 6),
                               Text(
                                 deck.description,
                                 style: AppTypography.bodyMedium.copyWith(
-                                  color: Colors.white.withValues(alpha: 0.85),
+                                  color: AppColors.bentoTextSecondary(deck.colorValue),
                                 ),
                               ),
                             ],
@@ -278,18 +304,31 @@ class DeckDetailScreen extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.26),
+        color: AppColors.bentoPodBackground,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
+        border: Border.all(color: AppColors.bentoPodBorder),
+        boxShadow: AppColors.isDarkMode
+            ? null
+            : [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.04),
+                  blurRadius: 4,
+                  offset: const Offset(0, 1),
+                ),
+              ],
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          _statCol('Total', '${deck.totalCards}', Colors.white),
+          _statCol('Total', '${deck.totalCards}', AppColors.bentoTextPrimary(deck.colorValue)),
           _divider(),
           _statCol('New', '${deck.newCardsCount}', AppColors.accentCyan),
           _divider(),
-          _statCol('Due Today', '${deck.scheduledDueCount}', AppColors.primaryLight),
+          _statCol(
+            'Due Today',
+            '${deck.scheduledDueCount}',
+            AppColors.isDarkMode ? AppColors.primaryLight : AppColors.primary,
+          ),
           _divider(),
           _statCol('Mastered', '${deck.masteredCount}', AppColors.success),
         ],
@@ -304,7 +343,10 @@ class DeckDetailScreen extends StatelessWidget {
         const SizedBox(height: 2),
         Text(
           label,
-          style: AppTypography.bodySmall.copyWith(color: Colors.white.withValues(alpha: 0.78)),
+          style: AppTypography.bodySmall.copyWith(
+            color: AppColors.bentoPodText.withValues(alpha: 0.8),
+            fontWeight: FontWeight.w600,
+          ),
         ),
       ],
     );
@@ -314,7 +356,9 @@ class DeckDetailScreen extends StatelessWidget {
     return Container(
       height: 24,
       width: 1,
-      color: Colors.white.withValues(alpha: 0.18),
+      color: AppColors.isDarkMode
+          ? Colors.white.withValues(alpha: 0.18)
+          : AppColors.borderSubtle,
     );
   }
 
