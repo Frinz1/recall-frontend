@@ -542,6 +542,16 @@ class SettingsScreen extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Center(
+            child: Image.asset(
+              'assets/images/recall_logo.png',
+              width: 68,
+              height: 80,
+              fit: BoxFit.contain,
+              errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+            ),
+          ),
+          const SizedBox(height: 18),
           _buildAboutItem(
             icon: Icons.psychology_outlined,
             color: AppColors.primary,

@@ -18,7 +18,7 @@ class SplashScreen extends StatefulWidget {
 class _SplashScreenState extends State<SplashScreen>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
-  late final Animation<Offset> _slideFromRight;
+  late final Animation<Offset> _dropFromTop;
   late final Animation<double> _bounceDy;
   late final Animation<double> _squashX;
   late final Animation<double> _squashY;
@@ -38,89 +38,89 @@ class _SplashScreenState extends State<SplashScreen>
       duration: const Duration(milliseconds: 6000),
     )..forward();
 
-    // 1. 0.00 -> 0.20: Emblem slides in horizontally from right to center
-    _slideFromRight = Tween<Offset>(
-      begin: const Offset(2.5, 0.0),
+    // 1. 0.00 -> 0.28: 3D Stacked Cards drop vertically from top into center (WebM sample)
+    _dropFromTop = Tween<Offset>(
+      begin: const Offset(0.0, -3.2),
       end: Offset.zero,
     ).animate(
       CurvedAnimation(
         parent: _controller,
-        curve: const Interval(0.0, 0.20, curve: Curves.easeOutCubic),
+        curve: const Interval(0.0, 0.28, curve: Curves.easeInQuad),
       ),
     );
 
-    // 2. 0.18 -> 0.44: 3 playful vertical hops in the center
+    // 2. 0.26 -> 0.48: Satisfying physical bounce on landing
     _bounceDy = TweenSequence<double>([
       TweenSequenceItem(
-        tween: Tween<double>(begin: 0.0, end: -42.0)
+        tween: Tween<double>(begin: 0.0, end: -36.0)
+            .chain(CurveTween(curve: Curves.easeOutQuad)),
+        weight: 24,
+      ),
+      TweenSequenceItem(
+        tween: Tween<double>(begin: -36.0, end: 0.0)
+            .chain(CurveTween(curve: Curves.easeInQuad)),
+        weight: 24,
+      ),
+      TweenSequenceItem(
+        tween: Tween<double>(begin: 0.0, end: -16.0)
             .chain(CurveTween(curve: Curves.easeOutQuad)),
         weight: 18,
       ),
       TweenSequenceItem(
-        tween: Tween<double>(begin: -42.0, end: 0.0)
+        tween: Tween<double>(begin: -16.0, end: 0.0)
             .chain(CurveTween(curve: Curves.easeInQuad)),
         weight: 18,
       ),
       TweenSequenceItem(
-        tween: Tween<double>(begin: 0.0, end: -22.0)
+        tween: Tween<double>(begin: 0.0, end: -6.0)
             .chain(CurveTween(curve: Curves.easeOutQuad)),
-        weight: 16,
+        weight: 8,
       ),
       TweenSequenceItem(
-        tween: Tween<double>(begin: -22.0, end: 0.0)
+        tween: Tween<double>(begin: -6.0, end: 0.0)
             .chain(CurveTween(curve: Curves.easeInQuad)),
-        weight: 16,
-      ),
-      TweenSequenceItem(
-        tween: Tween<double>(begin: 0.0, end: -10.0)
-            .chain(CurveTween(curve: Curves.easeOutQuad)),
-        weight: 16,
-      ),
-      TweenSequenceItem(
-        tween: Tween<double>(begin: -10.0, end: 0.0)
-            .chain(CurveTween(curve: Curves.easeInQuad)),
-        weight: 16,
+        weight: 8,
       ),
     ]).animate(
       CurvedAnimation(
         parent: _controller,
-        curve: const Interval(0.18, 0.44),
+        curve: const Interval(0.26, 0.48),
       ),
     );
 
-    // Subtle squash-and-stretch during the 3 hops
+    // Subtle squash-and-stretch on landing and rebounds
     _squashX = TweenSequence<double>([
-      TweenSequenceItem(tween: Tween<double>(begin: 1.0, end: 0.94), weight: 18),
-      TweenSequenceItem(tween: Tween<double>(begin: 0.94, end: 1.08), weight: 18),
-      TweenSequenceItem(tween: Tween<double>(begin: 1.08, end: 0.96), weight: 16),
-      TweenSequenceItem(tween: Tween<double>(begin: 0.96, end: 1.05), weight: 16),
-      TweenSequenceItem(tween: Tween<double>(begin: 1.05, end: 0.98), weight: 16),
-      TweenSequenceItem(tween: Tween<double>(begin: 0.98, end: 1.0), weight: 16),
+      TweenSequenceItem(tween: Tween<double>(begin: 1.0, end: 1.14), weight: 12),
+      TweenSequenceItem(tween: Tween<double>(begin: 1.14, end: 0.94), weight: 18),
+      TweenSequenceItem(tween: Tween<double>(begin: 0.94, end: 1.06), weight: 18),
+      TweenSequenceItem(tween: Tween<double>(begin: 1.06, end: 0.97), weight: 18),
+      TweenSequenceItem(tween: Tween<double>(begin: 0.97, end: 1.03), weight: 18),
+      TweenSequenceItem(tween: Tween<double>(begin: 1.03, end: 1.0), weight: 16),
     ]).animate(
       CurvedAnimation(
         parent: _controller,
-        curve: const Interval(0.18, 0.44),
+        curve: const Interval(0.26, 0.48),
       ),
     );
 
     _squashY = TweenSequence<double>([
-      TweenSequenceItem(tween: Tween<double>(begin: 1.0, end: 1.06), weight: 18),
-      TweenSequenceItem(tween: Tween<double>(begin: 1.06, end: 0.92), weight: 18),
-      TweenSequenceItem(tween: Tween<double>(begin: 0.92, end: 1.04), weight: 16),
-      TweenSequenceItem(tween: Tween<double>(begin: 1.04, end: 0.95), weight: 16),
-      TweenSequenceItem(tween: Tween<double>(begin: 0.95, end: 1.02), weight: 16),
-      TweenSequenceItem(tween: Tween<double>(begin: 1.02, end: 1.0), weight: 16),
+      TweenSequenceItem(tween: Tween<double>(begin: 1.0, end: 0.88), weight: 12),
+      TweenSequenceItem(tween: Tween<double>(begin: 0.88, end: 1.06), weight: 18),
+      TweenSequenceItem(tween: Tween<double>(begin: 1.06, end: 0.94), weight: 18),
+      TweenSequenceItem(tween: Tween<double>(begin: 0.94, end: 1.03), weight: 18),
+      TweenSequenceItem(tween: Tween<double>(begin: 1.03, end: 0.98), weight: 18),
+      TweenSequenceItem(tween: Tween<double>(begin: 0.98, end: 1.0), weight: 16),
     ]).animate(
       CurvedAnimation(
         parent: _controller,
-        curve: const Interval(0.18, 0.44),
+        curve: const Interval(0.26, 0.48),
       ),
     );
 
-    // 3. 0.42 -> 0.58: Wordmark & Tagline slide/fade up underneath the logo
+    // 3. 0.46 -> 0.62: Wordmark & Tagline slide/fade up underneath the logo
     _brandFade = CurvedAnimation(
       parent: _controller,
-      curve: const Interval(0.42, 0.58, curve: Curves.easeOutCubic),
+      curve: const Interval(0.46, 0.62, curve: Curves.easeOutCubic),
     );
 
     _brandSlideUp = Tween<Offset>(
@@ -129,26 +129,26 @@ class _SplashScreenState extends State<SplashScreen>
     ).animate(
       CurvedAnimation(
         parent: _controller,
-        curve: const Interval(0.42, 0.58, curve: Curves.easeOutCubic),
+        curve: const Interval(0.46, 0.62, curve: Curves.easeOutCubic),
       ),
     );
 
-    // 4. 0.58 -> 1.00: Subtle breathing pulse while splash artwork is held in view (+2.5s)
+    // 4. 0.62 -> 1.00: Subtle breathing pulse while splash artwork is held in view (+2.5s)
     _breatheGlow = TweenSequence<double>([
       TweenSequenceItem(
-        tween: Tween<double>(begin: 1.0, end: 1.05)
+        tween: Tween<double>(begin: 1.0, end: 1.04)
             .chain(CurveTween(curve: Curves.easeInOutSine)),
         weight: 50,
       ),
       TweenSequenceItem(
-        tween: Tween<double>(begin: 1.05, end: 1.0)
+        tween: Tween<double>(begin: 1.04, end: 1.0)
             .chain(CurveTween(curve: Curves.easeInOutSine)),
         weight: 50,
       ),
     ]).animate(
       CurvedAnimation(
         parent: _controller,
-        curve: const Interval(0.58, 1.0),
+        curve: const Interval(0.62, 1.0),
       ),
     );
 
@@ -193,10 +193,10 @@ class _SplashScreenState extends State<SplashScreen>
       animation: _controller,
       builder: (context, _) {
         final dy = _bounceDy.value;
-        final jumpRatio = (-dy / 42.0).clamp(0.0, 1.0);
+        final jumpRatio = (-dy / 36.0).clamp(0.0, 1.0);
 
         return Scaffold(
-          backgroundColor: const Color(0xFF0A0F1D),
+          backgroundColor: AppColors.bgCanvas,
           body: SafeArea(
             child: Center(
               child: Padding(
@@ -204,9 +204,9 @@ class _SplashScreenState extends State<SplashScreen>
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Sliding + Bouncing Recall Emblem
+                    // Vertical Drop + Bouncing 3D Card Stack Emblem (from WebM sample)
                     SlideTransition(
-                      position: _slideFromRight,
+                      position: _dropFromTop,
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
@@ -217,53 +217,49 @@ class _SplashScreenState extends State<SplashScreen>
                               scaleY: _squashY.value * _breatheGlow.value,
                               alignment: Alignment.bottomCenter,
                               child: Container(
-                                width: 104,
-                                height: 104,
-                                padding: const EdgeInsets.only(bottom: 5),
+                                width: 140,
+                                height: 165,
                                 decoration: BoxDecoration(
-                                  color: AppColors.primaryDark,
-                                  borderRadius: BorderRadius.circular(30),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: AppColors.primary.withValues(alpha: 0.35),
-                                      blurRadius: 28,
-                                      spreadRadius: 4,
-                                      offset: const Offset(0, 10),
+                                      color: const Color(0xFFD97706).withValues(alpha: 0.18 * _breatheGlow.value),
+                                      blurRadius: 36,
+                                      spreadRadius: 8,
+                                      offset: const Offset(0, 14),
                                     ),
                                   ],
                                 ),
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFF162032),
-                                    borderRadius: BorderRadius.circular(28),
-                                    border: Border.all(
-                                      color: AppColors.primary,
-                                      width: 2.4,
-                                    ),
-                                  ),
-                                  child: const Center(
+                                child: Image.asset(
+                                  'assets/images/recall_logo.png',
+                                  width: 140,
+                                  height: 165,
+                                  fit: BoxFit.contain,
+                                  errorBuilder: (_, __, ___) => const Center(
                                     child: Icon(
-                                      Icons.bolt_rounded,
+                                      Icons.layers_rounded,
                                       color: AppColors.primary,
-                                      size: 54,
+                                      size: 80,
                                     ),
                                   ),
                                 ),
                               ),
                             ),
                           ),
-                          const SizedBox(height: 12),
-                          // Reactive Floor Shadow Oval under the bouncing logo
+                          const SizedBox(height: 14),
+                          // Reactive Floor Shadow Oval under the bouncing 3D cards
                           Transform.scale(
-                            scaleX: 1.0 - (jumpRatio * 0.45),
-                            scaleY: 1.0 - (jumpRatio * 0.35),
+                            scaleX: (1.0 - (jumpRatio * 0.45)).clamp(0.4, 1.2),
+                            scaleY: (1.0 - (jumpRatio * 0.35)).clamp(0.4, 1.2),
                             child: Container(
-                              width: 56,
-                              height: 10,
+                              width: 80,
+                              height: 12,
                               decoration: BoxDecoration(
-                                color: Colors.black.withValues(
-                                  alpha: (0.30 * (1.0 - jumpRatio * 0.6))
-                                      .clamp(0.05, 0.30),
+                                color: (AppColors.isDarkMode
+                                        ? Colors.black
+                                        : const Color(0xFF4A4538))
+                                    .withValues(
+                                  alpha: (0.18 * (1.0 - jumpRatio * 0.6))
+                                      .clamp(0.04, 0.20),
                                 ),
                                 borderRadius: BorderRadius.circular(999),
                               ),
@@ -273,9 +269,9 @@ class _SplashScreenState extends State<SplashScreen>
                       ),
                     ),
 
-                    const SizedBox(height: 22),
+                    const SizedBox(height: 26),
 
-                    // Wordmark & Subtitle Reveal
+                    // Wordmark & Subtitle Reveal (Fade & Slide Up)
                     FadeTransition(
                       opacity: _brandFade,
                       child: SlideTransition(
@@ -287,10 +283,10 @@ class _SplashScreenState extends State<SplashScreen>
                               'Recall',
                               textAlign: TextAlign.center,
                               style: AppTypography.displayLarge.copyWith(
-                                fontSize: 40,
+                                fontSize: 42,
                                 fontWeight: FontWeight.w800,
                                 letterSpacing: -0.8,
-                                color: const Color(0xFFF8FAFC),
+                                color: AppColors.textPrimary,
                                 height: 1.0,
                               ),
                             ),
@@ -301,7 +297,9 @@ class _SplashScreenState extends State<SplashScreen>
                               style: AppTypography.bodyMedium.copyWith(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w600,
-                                color: const Color(0xFF38BDF8),
+                                color: AppColors.isDarkMode
+                                    ? const Color(0xFF38BDF8)
+                                    : const Color(0xFFD97706),
                               ),
                             ),
                           ],

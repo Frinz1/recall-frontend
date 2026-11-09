@@ -443,22 +443,21 @@ class _AuthScreenState extends State<AuthScreen> {
         // Top Brand Masthead
         Row(
           children: [
-            Container(
-              width: 34,
-              height: 34,
-              decoration: BoxDecoration(
-                color: AppColors.primary,
-                borderRadius: BorderRadius.circular(10),
-                boxShadow: const [
-                  BoxShadow(
-                    color: AppColors.primaryGlow,
-                    blurRadius: 10,
-                    offset: Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Center(
-                child: Icon(Icons.bolt_rounded, color: AppColors.textInverse, size: 22),
+            Image.asset(
+              'assets/images/recall_logo.png',
+              width: 36,
+              height: 42,
+              fit: BoxFit.contain,
+              errorBuilder: (_, __, ___) => Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: AppColors.primary,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Center(
+                  child: Icon(Icons.layers_rounded, color: AppColors.textInverse, size: 22),
+                ),
               ),
             ),
             const SizedBox(width: 10),
