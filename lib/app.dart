@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'core/services/auth_service.dart';
+import 'core/services/reminder_service.dart';
 import 'core/services/study_repository.dart';
 import 'core/theme/app_colors.dart';
 import 'core/theme/app_theme.dart';
@@ -206,6 +207,7 @@ class _MainNavigationShellState extends State<MainNavigationShell> with WidgetsB
       if (!mounted) return;
       _lastSeenDay = _today();
       StudyRepository.instance.refreshForCurrentDay();
+      ReminderService.instance.reschedule();
       _scheduleMidnightRefresh();
     });
   }
@@ -218,6 +220,7 @@ class _MainNavigationShellState extends State<MainNavigationShell> with WidgetsB
     final dayChanged = today != _lastSeenDay;
     _lastSeenDay = today;
     StudyRepository.instance.refreshForCurrentDay();
+    ReminderService.instance.reschedule();
     if (dayChanged) _scheduleMidnightRefresh();
   }
 

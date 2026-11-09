@@ -533,6 +533,7 @@ class DashboardScreen extends StatelessWidget {
                         border: Border.all(color: AppColors.borderSubtle),
                       ),
                       child: const EmptyStateView(
+                        scrollable: false,
                         icon: Icons.style_outlined,
                         title: 'No Flashcard Decks Yet',
                         description:

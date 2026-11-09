@@ -327,6 +327,7 @@ class DeckDetailScreen extends StatelessWidget {
                 SliverFillRemaining(
                   hasScrollBody: false,
                   child: EmptyStateView(
+                    scrollable: false,
                     icon: Icons.layers_clear_outlined,
                     title: 'No Cards Yet',
                     description: 'Start building this deck by adding your first flashcard.',

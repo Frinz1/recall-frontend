@@ -7,6 +7,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/widgets/app_button.dart';
 import '../../core/widgets/confetti_burst.dart';
+import '../../core/services/reminder_service.dart';
 import 'widgets/flip_card_widget.dart';
 
 class StudySessionScreen extends StatefulWidget {
@@ -151,6 +152,8 @@ class _StudySessionScreenState extends State<StudySessionScreen> {
       correctCount: _goodCount + _easyCount,
       durationSeconds: durationSec < 1 ? 1 : durationSec,
     );
+    // First finished session is when reminders make sense, so ask for notification permission here.
+    ReminderService.instance.maybeAskAfterFirstSession();
 
     showDialog<void>(
       context: context,

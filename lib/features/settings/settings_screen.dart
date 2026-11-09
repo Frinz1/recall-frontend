@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../core/services/auth_service.dart';
+import '../../core/services/reminder_service.dart';
 import '../../core/services/study_repository.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
@@ -144,6 +145,16 @@ class SettingsScreen extends StatelessWidget {
                       ),
                     ],
                   ),
+                ),
+
+                const SizedBox(height: 22),
+
+                // 3b. Study Reminders (on-device notifications)
+                _buildSectionLabel('REMINDERS'),
+                const SizedBox(height: 8),
+                AnimatedBuilder(
+                  animation: ReminderService.instance,
+                  builder: (context, _) => _buildRemindersGroup(context),
                 ),
 
                 const SizedBox(height: 22),
@@ -441,6 +452,88 @@ class SettingsScreen extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildRemindersGroup(BuildContext context) {
+    final reminders = ReminderService.instance;
+    final time = reminders.reminderTime;
+    final blocked = reminders.isAvailable && !reminders.permissionGranted &&
+        (reminders.dailyEnabled || reminders.streakEnabled);
+
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.bgCard,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.borderSubtle),
+      ),
+      child: Column(
+        children: [
+          _buildSwitchRow(
+            icon: Icons.notifications_active_outlined,
+            iconColor: AppColors.primary,
+            title: 'Daily Review Reminder',
+            subtitle: 'Only sent when cards are due',
+            value: reminders.dailyEnabled,
+            onChanged: (val) => reminders.setDailyEnabled(val),
+          ),
+          if (reminders.dailyEnabled) ...[
+            Divider(color: AppColors.borderSubtle, height: 1, indent: 56),
+            _buildNavRow(
+              icon: Icons.schedule_rounded,
+              iconColor: AppColors.accentCyan,
+              title: 'Reminder Time',
+              valueText: time.format(context),
+              onTap: () async {
+                final picked = await showTimePicker(context: context, initialTime: time);
+                if (picked == null) return;
+                await reminders.setReminderTime(picked);
+                if (context.mounted) {
+                  ToastFeedback.showSuccess(
+                      context, 'Daily reminder set for ${picked.format(context)}.');
+                }
+              },
+            ),
+          ],
+          Divider(color: AppColors.borderSubtle, height: 1, indent: 56),
+          _buildSwitchRow(
+            icon: Icons.local_fire_department_outlined,
+            iconColor: AppColors.warning,
+            title: 'Streak Warning',
+            subtitle: '9:00 PM, only if you haven\'t studied yet',
+            value: reminders.streakEnabled,
+            onChanged: (val) => reminders.setStreakEnabled(val),
+          ),
+          if (blocked) ...[
+            Divider(color: AppColors.borderSubtle, height: 1, indent: 56),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
+              child: Row(
+                children: [
+                  const Icon(Icons.notifications_off_outlined, color: AppColors.danger, size: 20),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Notifications are turned off for Recall, so reminders can\'t be shown.',
+                      style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () async {
+                      final granted = await reminders.requestPermission();
+                      if (!granted && context.mounted) {
+                        ToastFeedback.showInfo(context,
+                            'Allow notifications for Recall in your phone\'s Settings > Apps.');
+                      }
+                    },
+                    child: const Text('Allow'),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }

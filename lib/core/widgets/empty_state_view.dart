@@ -11,6 +11,10 @@ class EmptyStateView extends StatelessWidget {
   final VoidCallback? onCtaPressed;
   final String? imageAsset;
 
+  /// Set to false when the empty state is placed inside a parent that already scrolls
+  /// (e.g. Dashboard, Deck Overview). A nested scroll view would swallow the swipe gesture.
+  final bool scrollable;
+
   const EmptyStateView({
     super.key,
     required this.icon,
@@ -19,15 +23,14 @@ class EmptyStateView extends StatelessWidget {
     this.ctaLabel,
     this.onCtaPressed,
     this.imageAsset = 'assets/images/empty_decks_3d.jpg',
+    this.scrollable = true,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: SingleChildScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
+    final content = Padding(
+      padding: const EdgeInsets.all(24.0),
+      child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             if (imageAsset != null)
@@ -84,6 +87,14 @@ class EmptyStateView extends StatelessWidget {
             ],
           ],
         ),
+    );
+
+    if (!scrollable) return Center(child: content);
+
+    return Center(
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        child: content,
       ),
     );
   }
