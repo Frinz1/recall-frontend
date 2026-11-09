@@ -7,6 +7,7 @@ import '../../core/theme/app_typography.dart';
 import '../../core/theme/theme_service.dart';
 import '../../core/widgets/app_button.dart';
 import '../../core/widgets/empty_state_view.dart';
+import '../../core/widgets/mechanics_sheet.dart';
 import '../../core/widgets/quick_create_sheet.dart';
 import '../../core/widgets/toast_feedback.dart';
 import '../deck/deck_detail_screen.dart';
@@ -928,8 +929,8 @@ class DashboardScreen extends StatelessWidget {
 
   Widget _buildBentoDeckCard(BuildContext context, Deck deck) {
     final accent = AppColors.resolveBentoAccent(deck.colorValue);
-    final masteryPct = deck.masteryPercentage.round();
-    final progressValue = deck.cards.isEmpty ? 0.0 : (deck.masteredCount / deck.cards.length);
+    final progressPct = deck.graduatedProgressPercentage.round();
+    final progressValue = deck.graduatedProgress;
 
     String statusLabel;
     Color statusDotColor;
@@ -1161,7 +1162,7 @@ class DashboardScreen extends StatelessWidget {
                   children: [
                     Flexible(
                       child: Text(
-                        'Progress • $masteryPct%',
+                        'Progress • $progressPct%',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: AppTypography.badge.copyWith(
@@ -1261,6 +1262,38 @@ class DashboardScreen extends StatelessWidget {
                   style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary),
                 ),
               ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          InkWell(
+            onTap: () => MechanicsSheet.showWeaknessRadarRules(context),
+            borderRadius: BorderRadius.circular(20),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: AppColors.isDarkMode
+                    ? Colors.white.withValues(alpha: 0.12)
+                    : Colors.white.withValues(alpha: 0.85),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: AppColors.danger.withValues(alpha: 0.4),
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.help_outline_rounded, size: 13, color: AppColors.danger),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Rules',
+                    style: AppTypography.badge.copyWith(
+                      color: AppColors.danger,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ],

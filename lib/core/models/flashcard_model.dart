@@ -272,6 +272,15 @@ class Deck {
   int get masteredCount => cards.where((c) => c.masteryStatus == CardMasteryStatus.mastered).length;
   int get unmasteredCount => cards.where((c) => c.masteryStatus != CardMasteryStatus.mastered).length;
   int get learningCount => cards.where((c) => c.masteryStatus == CardMasteryStatus.learning).length;
+  int get reviewingCount => cards.where((c) => c.masteryStatus == CardMasteryStatus.reviewing).length;
+
+  double get graduatedProgress {
+    if (cards.isEmpty) return 0.0;
+    final score = (learningCount * 0.25) + (reviewingCount * 0.60) + (masteredCount * 1.0);
+    return (score / cards.length).clamp(0.0, 1.0);
+  }
+
+  double get graduatedProgressPercentage => graduatedProgress * 100.0;
 
   double get masteryPercentage {
     if (cards.isEmpty) return 0.0;

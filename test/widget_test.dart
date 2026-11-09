@@ -7,6 +7,7 @@ import 'package:recall/core/services/study_repository.dart';
 import 'package:recall/core/theme/app_colors.dart';
 import 'package:recall/core/theme/theme_service.dart';
 import 'package:recall/core/widgets/curved_bottom_sheet.dart';
+import 'package:recall/core/widgets/mechanics_sheet.dart';
 import 'package:recall/core/widgets/app_button.dart';
 import 'package:recall/core/widgets/quick_create_sheet.dart';
 import 'package:recall/features/auth/auth_screen.dart';
@@ -1056,6 +1057,74 @@ void main() {
     // Targeted card question is present, other card is not
     expect(find.text('Define CIDR Subnetting'), findsOneWidget);
     expect(find.text('Which layer handles routing?'), findsNothing);
+
+    // 8. Fullstack Audit: Graduated Deck Progress with Reviewing status cards
+    final testDeckWithReviewing = Deck(
+      id: 'deck_reviewing_test',
+      subjectId: 'sub_test',
+      title: 'Reviewing Progress Test',
+      description: 'Test deck for reviewing stage progress',
+      colorValue: 0xFF6366F1,
+      cards: List.generate(
+        4,
+        (i) => Flashcard(
+          id: 'card_rev_$i',
+          deckId: 'deck_reviewing_test',
+          question: 'Question $i',
+          answer: 'Answer $i',
+          timesReviewed: 2,
+          repetitions: 2,
+          masteryStatus: CardMasteryStatus.reviewing,
+          nextReviewDate: DateTime.now().add(const Duration(days: 6)),
+        ),
+      ),
+      createdAt: DateTime.now(),
+    );
+
+    // Old binary formula would yield 0.0; Graduated progress MUST yield 0.60 (60% Progress)
+    expect(testDeckWithReviewing.masteredCount, equals(0));
+    expect(testDeckWithReviewing.reviewingCount, equals(4));
+    expect(testDeckWithReviewing.graduatedProgress, equals(0.60));
+    expect(testDeckWithReviewing.graduatedProgressPercentage, equals(60.0));
+
+    // 9. MechanicsSheet renders Deck Mastery and Weakness Radar rules
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Builder(
+            builder: (ctx) => Column(
+              children: [
+                ElevatedButton(
+                  onPressed: () => MechanicsSheet.showDeckMasteryRules(ctx),
+                  child: const Text('Show Deck Rules'),
+                ),
+                ElevatedButton(
+                  onPressed: () => MechanicsSheet.showWeaknessRadarRules(ctx),
+                  child: const Text('Show Radar Rules'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Open Deck Rules
+    await tester.tap(find.text('Show Deck Rules'));
+    await tester.pumpAndSettle();
+    expect(find.text('Deck Mastery Mechanics'), findsOneWidget);
+    expect(find.textContaining('Reviewing Stage'), findsOneWidget);
+
+    // Close sheet via close icon
+    await tester.tap(find.byIcon(Icons.close_rounded));
+    await tester.pumpAndSettle();
+
+    // Open Radar Rules
+    await tester.tap(find.text('Show Radar Rules'));
+    await tester.pumpAndSettle();
+    expect(find.text('Weakness Radar Mechanics'), findsOneWidget);
+    expect(find.textContaining('Sample Size Gate'), findsOneWidget);
   });
 }
 

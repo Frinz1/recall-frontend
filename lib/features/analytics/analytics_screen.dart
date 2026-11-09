@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/algorithms/sm2_engine.dart';
 import '../../core/models/flashcard_model.dart';
 import '../../core/services/study_repository.dart';
 import '../../core/theme/app_colors.dart';
@@ -6,6 +7,7 @@ import '../../core/theme/app_typography.dart';
 import '../../core/theme/theme_service.dart';
 import '../../core/widgets/app_badge.dart';
 import '../../core/widgets/app_button.dart';
+import '../../core/widgets/mechanics_sheet.dart';
 import '../study/study_session_screen.dart';
 
 class AnalyticsScreen extends StatelessWidget {
@@ -65,6 +67,11 @@ class AnalyticsScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 24),
 
+                  // 4-Stage Mastery Funnel Card
+                  _buildLearningFunnelCard(repo),
+
+                  const SizedBox(height: 24),
+
                   // Dynamic 7-Day Consistency Heatmap Grid
                   _buildConsistencyCard(repo),
 
@@ -87,16 +94,48 @@ class AnalyticsScreen extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: AppColors.dangerSurface,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          '${weakCards.length} at risk',
-                          style: AppTypography.badge.copyWith(color: AppColors.danger),
-                        ),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          InkWell(
+                            onTap: () => MechanicsSheet.showWeaknessRadarRules(context),
+                            borderRadius: BorderRadius.circular(8),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: AppColors.bgSurface1,
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: AppColors.borderSubtle),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.help_outline_rounded, size: 13, color: AppColors.textSecondary),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'Rules',
+                                    style: AppTypography.badge.copyWith(
+                                      color: AppColors.textSecondary,
+                                      fontSize: 11,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: AppColors.dangerSurface,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              '${weakCards.length} at risk',
+                              style: AppTypography.badge.copyWith(color: AppColors.danger),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -357,6 +396,142 @@ class AnalyticsScreen extends StatelessWidget {
             minHeight: 8,
             backgroundColor: AppColors.bgSurface2,
             valueColor: AlwaysStoppedAnimation<Color>(color),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildLearningFunnelCard(StudyRepository repo) {
+    final allCards = repo.allCards;
+    final total = allCards.isEmpty ? 1 : allCards.length;
+    final newCount = allCards.where((c) => c.timesReviewed == 0).length;
+    final learningCount = allCards.where((c) => c.timesReviewed > 0 && c.masteryStatus == CardMasteryStatus.learning).length;
+    final reviewingCount = allCards.where((c) => c.masteryStatus == CardMasteryStatus.reviewing).length;
+    final masteredCount = allCards.where((c) => c.masteryStatus == CardMasteryStatus.mastered).length;
+
+    final progressPct = allCards.isEmpty
+        ? 0
+        : (((learningCount * 0.25) + (reviewingCount * 0.60) + (masteredCount * 1.0)) / total * 100).round();
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: AppColors.bgCard,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.borderSubtle),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  '4-Stage Mastery Funnel',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTypography.titleMedium,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  '$progressPct% Progress',
+                  style: AppTypography.badge.copyWith(
+                    color: AppColors.isDarkMode ? AppColors.primaryLight : const Color(0xFFD97706),
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Visual progression from initial learning to permanent retention',
+            style: AppTypography.bodySmall.copyWith(color: AppColors.textMuted),
+          ),
+          const SizedBox(height: 16),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(6),
+            child: SizedBox(
+              height: 10,
+              child: Row(
+                children: [
+                  if (newCount > 0)
+                    Expanded(
+                      flex: newCount,
+                      child: Container(color: AppColors.textMuted.withValues(alpha: 0.35)),
+                    ),
+                  if (learningCount > 0)
+                    Expanded(
+                      flex: learningCount,
+                      child: Container(color: AppColors.accentCyan),
+                    ),
+                  if (reviewingCount > 0)
+                    Expanded(
+                      flex: reviewingCount,
+                      child: Container(color: AppColors.primary),
+                    ),
+                  if (masteredCount > 0)
+                    Expanded(
+                      flex: masteredCount,
+                      child: Container(color: AppColors.success),
+                    ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(child: _buildFunnelStagePill('New', '$newCount', AppColors.textMuted)),
+              Expanded(child: _buildFunnelStagePill('Learning', '$learningCount', AppColors.accentCyan)),
+              Expanded(child: _buildFunnelStagePill('Reviewing', '$reviewingCount', AppColors.primary)),
+              Expanded(child: _buildFunnelStagePill('Mastered', '$masteredCount', AppColors.success)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFunnelStagePill(String stage, String count, Color color) {
+    return Column(
+      children: [
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 8,
+              height: 8,
+              decoration: BoxDecoration(
+                color: color,
+                shape: BoxShape.circle,
+              ),
+            ),
+            const SizedBox(width: 5),
+            Text(
+              count,
+              style: AppTypography.titleMedium.copyWith(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: color,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 2),
+        Text(
+          stage,
+          style: AppTypography.bodySmall.copyWith(
+            fontSize: 11,
+            color: AppColors.textSecondary,
           ),
         ),
       ],

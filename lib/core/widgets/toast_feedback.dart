@@ -45,6 +45,8 @@ class ToastFeedback {
     final messenger = ScaffoldMessenger.maybeOf(context);
     if (messenger == null) return;
 
+    final isDark = AppColors.isDarkMode;
+
     messenger.hideCurrentSnackBar();
     messenger.showSnackBar(
       SnackBar(
@@ -57,24 +59,37 @@ class ToastFeedback {
         content: Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           decoration: BoxDecoration(
-            color: const Color(0xFF181A20),
+            color: isDark ? const Color(0xFF181A20) : Colors.white,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: accentColor.withValues(alpha: 0.55),
+              color: accentColor.withValues(alpha: isDark ? 0.55 : 0.35),
               width: 1.2,
             ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.45),
-                blurRadius: 20,
-                offset: const Offset(0, 8),
-              ),
-              BoxShadow(
-                color: accentColor.withValues(alpha: 0.12),
-                blurRadius: 14,
-                spreadRadius: 1,
-              ),
-            ],
+            boxShadow: isDark
+                ? [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.45),
+                      blurRadius: 20,
+                      offset: const Offset(0, 8),
+                    ),
+                    BoxShadow(
+                      color: accentColor.withValues(alpha: 0.12),
+                      blurRadius: 14,
+                      spreadRadius: 1,
+                    ),
+                  ]
+                : [
+                    BoxShadow(
+                      color: const Color(0xFF1A1D20).withValues(alpha: 0.10),
+                      blurRadius: 18,
+                      offset: const Offset(0, 6),
+                    ),
+                    BoxShadow(
+                      color: accentColor.withValues(alpha: 0.08),
+                      blurRadius: 10,
+                      spreadRadius: 1,
+                    ),
+                  ],
           ),
           child: Row(
             children: [
@@ -82,10 +97,10 @@ class ToastFeedback {
                 width: 36,
                 height: 36,
                 decoration: BoxDecoration(
-                  color: accentColor.withValues(alpha: 0.16),
+                  color: accentColor.withValues(alpha: isDark ? 0.16 : 0.12),
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(
-                    color: accentColor.withValues(alpha: 0.35),
+                    color: accentColor.withValues(alpha: isDark ? 0.35 : 0.30),
                   ),
                 ),
                 child: Icon(icon, color: accentColor, size: 20),
@@ -109,7 +124,7 @@ class ToastFeedback {
                     Text(
                       message,
                       style: AppTypography.bodyMedium.copyWith(
-                        color: const Color(0xFFF1F5F9),
+                        color: isDark ? const Color(0xFFF1F5F9) : const Color(0xFF1A1D20),
                         fontSize: 13.5,
                         fontWeight: FontWeight.w600,
                         height: 1.3,
@@ -122,12 +137,12 @@ class ToastFeedback {
               InkWell(
                 onTap: () => messenger.hideCurrentSnackBar(),
                 borderRadius: BorderRadius.circular(8),
-                child: const Padding(
-                  padding: EdgeInsets.all(4),
+                child: Padding(
+                  padding: const EdgeInsets.all(4),
                   child: Icon(
                     Icons.close_rounded,
                     size: 16,
-                    color: Color(0xFF94A3B8),
+                    color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
                   ),
                 ),
               ),

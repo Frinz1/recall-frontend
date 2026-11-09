@@ -7,6 +7,7 @@ import '../../core/widgets/app_badge.dart';
 import '../../core/widgets/app_button.dart';
 import '../../core/widgets/curved_bottom_sheet.dart';
 import '../../core/widgets/empty_state_view.dart';
+import '../../core/widgets/mechanics_sheet.dart';
 import '../../core/widgets/quick_create_sheet.dart';
 import '../../core/widgets/toast_feedback.dart';
 import '../quiz/quiz_screen.dart';
@@ -106,28 +107,43 @@ class DeckDetailScreen extends StatelessWidget {
                           children: [
                             Row(
                               children: [
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.bentoPodBackground,
-                                    borderRadius: BorderRadius.circular(20),
-                                    border: Border.all(color: AppColors.bentoPodBorder),
-                                    boxShadow: AppColors.isDarkMode
-                                        ? null
-                                        : [
-                                            BoxShadow(
-                                              color: Colors.black.withValues(alpha: 0.04),
-                                              blurRadius: 4,
-                                              offset: const Offset(0, 1),
-                                            ),
-                                          ],
-                                  ),
-                                  child: Text(
-                                    '${deck.masteryPercentage.round()}% MASTERED',
-                                    style: AppTypography.badge.copyWith(
-                                      color: AppColors.bentoPodText,
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w700,
+                                InkWell(
+                                  onTap: () => MechanicsSheet.showDeckMasteryRules(context),
+                                  borderRadius: BorderRadius.circular(20),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.bentoPodBackground,
+                                      borderRadius: BorderRadius.circular(20),
+                                      border: Border.all(color: AppColors.bentoPodBorder),
+                                      boxShadow: AppColors.isDarkMode
+                                          ? null
+                                          : [
+                                              BoxShadow(
+                                                color: Colors.black.withValues(alpha: 0.04),
+                                                blurRadius: 4,
+                                                offset: const Offset(0, 1),
+                                              ),
+                                            ],
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(
+                                          '${deck.graduatedProgressPercentage.round()}% PROGRESS',
+                                          style: AppTypography.badge.copyWith(
+                                            color: AppColors.bentoPodText,
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Icon(
+                                          Icons.help_outline_rounded,
+                                          size: 13,
+                                          color: AppColors.bentoPodText.withValues(alpha: 0.8),
+                                        ),
+                                      ],
                                     ),
                                   ),
                                 ),
@@ -194,6 +210,42 @@ class DeckDetailScreen extends StatelessWidget {
                             ],
                             const SizedBox(height: 16),
                             _buildDeckStatsBar(deck),
+                            const SizedBox(height: 14),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'Graduated Mastery Progress',
+                                  style: AppTypography.bodySmall.copyWith(
+                                    color: AppColors.bentoTextSecondary(deck.colorValue),
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 11.5,
+                                  ),
+                                ),
+                                Text(
+                                  '${deck.graduatedProgressPercentage.round()}% • ${deck.masteredCount}/${deck.totalCards} mastered',
+                                  style: AppTypography.badge.copyWith(
+                                    color: AppColors.bentoTextPrimary(deck.colorValue),
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 6),
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: LinearProgressIndicator(
+                                value: deck.graduatedProgress,
+                                minHeight: 8,
+                                backgroundColor: AppColors.bentoProgressTrackBg(),
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  deck.graduatedProgress >= 1.0
+                                      ? AppColors.success
+                                      : AppColors.bentoProgressBarColor(deck.colorValue),
+                                ),
+                              ),
+                            ),
                           ],
                         ),
                       ),

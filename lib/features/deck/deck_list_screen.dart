@@ -5,6 +5,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/theme/theme_service.dart';
 import '../../core/widgets/empty_state_view.dart';
+import '../../core/widgets/mechanics_sheet.dart';
 import '../../core/widgets/quick_create_sheet.dart';
 import '../../core/widgets/toast_feedback.dart';
 import '../subject/subject_list_screen.dart';
@@ -55,6 +56,28 @@ class _DeckListScreenState extends State<DeckListScreen> {
             titleSpacing: 20,
             title: Text('My Decks & Library', style: AppTypography.titleLarge),
             actions: [
+              Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: TextButton.icon(
+                  style: TextButton.styleFrom(
+                    backgroundColor: AppColors.bgSurface1,
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                      side: BorderSide(color: AppColors.borderSubtle),
+                    ),
+                  ),
+                  icon: Icon(Icons.help_outline_rounded, size: 15, color: AppColors.textSecondary),
+                  label: Text(
+                    'Rules',
+                    style: AppTypography.badge.copyWith(
+                      color: AppColors.textSecondary,
+                      fontSize: 12,
+                    ),
+                  ),
+                  onPressed: () => MechanicsSheet.showDeckMasteryRules(context),
+                ),
+              ),
               // Single clean 'Subjects' button in AppBar (No redundant + Deck or + Subject buttons)
               Padding(
                 padding: const EdgeInsets.only(right: 16),
@@ -236,8 +259,8 @@ class _DeckListScreenState extends State<DeckListScreen> {
 
   Widget _buildBentoDeckCard(BuildContext context, Deck deck, StudyRepository repo) {
     final accent = AppColors.resolveBentoAccent(deck.colorValue);
-    final masteryPct = deck.masteryPercentage.round();
-    final progressValue = deck.cards.isEmpty ? 0.0 : (deck.masteredCount / deck.cards.length);
+    final progressPct = deck.graduatedProgressPercentage.round();
+    final progressValue = deck.graduatedProgress;
 
     Subject? subject;
     for (final s in repo.subjects) {
@@ -544,7 +567,7 @@ class _DeckListScreenState extends State<DeckListScreen> {
                   children: [
                     Flexible(
                       child: Text(
-                        'Progress • $masteryPct%',
+                        'Progress • $progressPct%',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: AppTypography.badge.copyWith(
