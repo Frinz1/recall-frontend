@@ -65,15 +65,15 @@ class _DeckListScreenState extends State<DeckListScreen> {
                       side: BorderSide(color: AppColors.borderSubtle),
                     ),
                   ),
-                  icon: const Icon(
+                  icon: Icon(
                     Icons.category_outlined,
                     size: 16,
-                    color: AppColors.primaryLight,
+                    color: AppColors.isDarkMode ? AppColors.primaryLight : AppColors.primary,
                   ),
                   label: Text(
                     'Subjects',
                     style: AppTypography.badge.copyWith(
-                      color: AppColors.primaryLight,
+                      color: AppColors.isDarkMode ? AppColors.primaryLight : AppColors.primary,
                       fontSize: 12,
                     ),
                   ),
@@ -204,20 +204,22 @@ class _DeckListScreenState extends State<DeckListScreen> {
             ? Icon(
                 icon,
                 size: 15,
-                color: isSelected ? AppColors.bgCanvas : AppColors.primaryLight,
+                color: isSelected
+                    ? AppColors.textInverse
+                    : (AppColors.isDarkMode ? AppColors.primaryLight : AppColors.primary),
               )
             : null,
         label: Text(
           label,
           style: AppTypography.badge.copyWith(
-            color: isSelected ? AppColors.bgCanvas : AppColors.textSecondary,
+            color: isSelected ? AppColors.textInverse : AppColors.textSecondary,
           ),
         ),
         selected: isSelected,
         onSelected: (_) => onTap(),
         backgroundColor: AppColors.bgSurface1,
         selectedColor: AppColors.primary,
-        checkmarkColor: AppColors.bgCanvas,
+        checkmarkColor: AppColors.textInverse,
         showCheckmark: false,
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
         shape: RoundedRectangleBorder(
@@ -269,7 +271,7 @@ class _DeckListScreenState extends State<DeckListScreen> {
         borderRadius: BorderRadius.circular(24),
         border: Border.all(
           color: deck.isFavorite
-              ? AppColors.primaryLight.withValues(alpha: 0.85)
+              ? (AppColors.isDarkMode ? AppColors.primaryLight : AppColors.primary).withValues(alpha: 0.85)
               : AppColors.bentoBorderColor(deck.colorValue),
           width: 1.4,
         ),

@@ -109,7 +109,7 @@ class ToastFeedback {
                     Text(
                       message,
                       style: AppTypography.bodyMedium.copyWith(
-                        color: AppColors.textPrimary,
+                        color: const Color(0xFFF1F5F9),
                         fontSize: 13.5,
                         fontWeight: FontWeight.w600,
                         height: 1.3,
@@ -122,12 +122,12 @@ class ToastFeedback {
               InkWell(
                 onTap: () => messenger.hideCurrentSnackBar(),
                 borderRadius: BorderRadius.circular(8),
-                child: Padding(
-                  padding: const EdgeInsets.all(4),
+                child: const Padding(
+                  padding: EdgeInsets.all(4),
                   child: Icon(
                     Icons.close_rounded,
                     size: 16,
-                    color: AppColors.textMuted,
+                    color: Color(0xFF94A3B8),
                   ),
                 ),
               ),

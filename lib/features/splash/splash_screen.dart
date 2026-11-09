@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/theme/app_colors.dart';
@@ -23,7 +22,6 @@ class _SplashScreenState extends State<SplashScreen>
   late final Animation<double> _bounceDy;
   late final Animation<double> _squashX;
   late final Animation<double> _squashY;
-  late final Animation<double> _darkReveal;
   late final Animation<double> _brandFade;
   late final Animation<Offset> _brandSlideUp;
   late final Animation<double> _breatheGlow;
@@ -119,13 +117,7 @@ class _SplashScreenState extends State<SplashScreen>
       ),
     );
 
-    // 3. 0.38 -> 0.54: Theme-aware radial reveal
-    _darkReveal = CurvedAnimation(
-      parent: _controller,
-      curve: const Interval(0.38, 0.54, curve: Curves.easeInOutCubic),
-    );
-
-    // 4. 0.42 -> 0.58: Wordmark & Tagline slide/fade up underneath the logo
+    // 3. 0.42 -> 0.58: Wordmark & Tagline slide/fade up underneath the logo
     _brandFade = CurvedAnimation(
       parent: _controller,
       curve: const Interval(0.42, 0.58, curve: Curves.easeOutCubic),
@@ -141,7 +133,7 @@ class _SplashScreenState extends State<SplashScreen>
       ),
     );
 
-    // 5. 0.58 -> 1.00: Subtle breathing pulse while splash artwork is held in view (+2.5s)
+    // 4. 0.58 -> 1.00: Subtle breathing pulse while splash artwork is held in view (+2.5s)
     _breatheGlow = TweenSequence<double>([
       TweenSequenceItem(
         tween: Tween<double>(begin: 1.0, end: 1.05)
@@ -202,193 +194,127 @@ class _SplashScreenState extends State<SplashScreen>
       builder: (context, _) {
         final dy = _bounceDy.value;
         final jumpRatio = (-dy / 42.0).clamp(0.0, 1.0);
-        final isDark = AppColors.isDarkMode;
-        final isDarkDominant = isDark && _darkReveal.value > 0.5;
 
         return Scaffold(
-          backgroundColor: isDark ? const Color(0xFF0F172A) : Colors.white,
-          body: Stack(
-            alignment: Alignment.center,
-            children: [
-              // Radial Reveal matching active theme mode
-              if (isDark)
-                Positioned.fill(
-                  child: CustomPaint(
-                    painter: _CircularRevealPainter(
-                      progress: _darkReveal.value,
-                      color: AppColors.bgCanvas,
-                    ),
-                  ),
-                )
-              else
-                Positioned.fill(
-                  child: CustomPaint(
-                    painter: _CircularRevealPainter(
-                      progress: _darkReveal.value,
-                      color: AppColors.bgCanvas,
-                    ),
-                  ),
-                ),
-
-              // Center Kinetic Brand Choreography
-              SafeArea(
-                child: Center(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 28),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // Sliding + Bouncing Recall Emblem
-                        SlideTransition(
-                          position: _slideFromRight,
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Transform.translate(
-                                offset: Offset(0, dy),
-                                child: Transform.scale(
-                                  scaleX: _squashX.value * _breatheGlow.value,
-                                  scaleY: _squashY.value * _breatheGlow.value,
-                                  alignment: Alignment.bottomCenter,
-                                  child: Container(
-                                    width: 104,
-                                    height: 104,
-                                    padding: const EdgeInsets.only(bottom: 5),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.primaryDark,
-                                      borderRadius: BorderRadius.circular(30),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: isDarkDominant
-                                              ? AppColors.primary.withValues(alpha: 0.34)
-                                              : (isDark
-                                                  ? Colors.black.withValues(alpha: 0.16)
-                                                  : AppColors.primary.withValues(alpha: 0.22)),
-                                          blurRadius: 28,
-                                          spreadRadius: isDarkDominant ? 4 : 2,
-                                          offset: const Offset(0, 10),
-                                        ),
-                                      ],
+          backgroundColor: const Color(0xFF0A0F1D),
+          body: SafeArea(
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 28),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Sliding + Bouncing Recall Emblem
+                    SlideTransition(
+                      position: _slideFromRight,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Transform.translate(
+                            offset: Offset(0, dy),
+                            child: Transform.scale(
+                              scaleX: _squashX.value * _breatheGlow.value,
+                              scaleY: _squashY.value * _breatheGlow.value,
+                              alignment: Alignment.bottomCenter,
+                              child: Container(
+                                width: 104,
+                                height: 104,
+                                padding: const EdgeInsets.only(bottom: 5),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primaryDark,
+                                  borderRadius: BorderRadius.circular(30),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: AppColors.primary.withValues(alpha: 0.35),
+                                      blurRadius: 28,
+                                      spreadRadius: 4,
+                                      offset: const Offset(0, 10),
                                     ),
-                                    child: Container(
-                                      decoration: BoxDecoration(
-                                        color: AppColors.bgSurface1,
-                                        borderRadius: BorderRadius.circular(28),
-                                        border: Border.all(
-                                          color: AppColors.primary,
-                                          width: 2.4,
-                                        ),
-                                      ),
-                                      child: const Center(
-                                        child: Icon(
-                                          Icons.bolt_rounded,
-                                          color: AppColors.primary,
-                                          size: 54,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
+                                  ],
                                 ),
-                              ),
-                              const SizedBox(height: 12),
-                              // Reactive Floor Shadow Oval under the bouncing logo
-                              Transform.scale(
-                                scaleX: 1.0 - (jumpRatio * 0.45),
-                                scaleY: 1.0 - (jumpRatio * 0.35),
                                 child: Container(
-                                  width: 56,
-                                  height: 10,
                                   decoration: BoxDecoration(
-                                    color: (isDarkDominant
-                                            ? Colors.black
-                                            : AppColors.bgCanvas)
-                                        .withValues(
-                                      alpha: (0.22 * (1.0 - jumpRatio * 0.6))
-                                          .clamp(0.05, 0.28),
+                                    color: const Color(0xFF162032),
+                                    borderRadius: BorderRadius.circular(28),
+                                    border: Border.all(
+                                      color: AppColors.primary,
+                                      width: 2.4,
                                     ),
-                                    borderRadius: BorderRadius.circular(999),
+                                  ),
+                                  child: const Center(
+                                    child: Icon(
+                                      Icons.bolt_rounded,
+                                      color: AppColors.primary,
+                                      size: 54,
+                                    ),
                                   ),
                                 ),
                               ),
-                            ],
-                          ),
-                        ),
-
-                        const SizedBox(height: 22),
-
-                        // Wordmark & Subtitle Reveal
-                        FadeTransition(
-                          opacity: _brandFade,
-                          child: SlideTransition(
-                            position: _brandSlideUp,
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  'Recall',
-                                  textAlign: TextAlign.center,
-                                  style: AppTypography.displayLarge.copyWith(
-                                    fontSize: 40,
-                                    fontWeight: FontWeight.w800,
-                                    letterSpacing: -0.8,
-                                    color: AppColors.textPrimary,
-                                    height: 1.0,
-                                  ),
-                                ),
-                                const SizedBox(height: 10),
-                                Text(
-                                  'Study smarter, remember longer.',
-                                  textAlign: TextAlign.center,
-                                  style: AppTypography.bodyMedium.copyWith(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w600,
-                                    color: AppColors.accentCyan,
-                                  ),
-                                ),
-                              ],
                             ),
                           ),
-                        ),
-                      ],
+                          const SizedBox(height: 12),
+                          // Reactive Floor Shadow Oval under the bouncing logo
+                          Transform.scale(
+                            scaleX: 1.0 - (jumpRatio * 0.45),
+                            scaleY: 1.0 - (jumpRatio * 0.35),
+                            child: Container(
+                              width: 56,
+                              height: 10,
+                              decoration: BoxDecoration(
+                                color: Colors.black.withValues(
+                                  alpha: (0.30 * (1.0 - jumpRatio * 0.6))
+                                      .clamp(0.05, 0.30),
+                                ),
+                                borderRadius: BorderRadius.circular(999),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
+
+                    const SizedBox(height: 22),
+
+                    // Wordmark & Subtitle Reveal
+                    FadeTransition(
+                      opacity: _brandFade,
+                      child: SlideTransition(
+                        position: _brandSlideUp,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              'Recall',
+                              textAlign: TextAlign.center,
+                              style: AppTypography.displayLarge.copyWith(
+                                fontSize: 40,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: -0.8,
+                                color: const Color(0xFFF8FAFC),
+                                height: 1.0,
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            Text(
+                              'Study smarter, remember longer.',
+                              textAlign: TextAlign.center,
+                              style: AppTypography.bodyMedium.copyWith(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                                color: const Color(0xFF38BDF8),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ],
+            ),
           ),
         );
       },
     );
   }
-}
-
-class _CircularRevealPainter extends CustomPainter {
-  final double progress;
-  final Color color;
-
-  const _CircularRevealPainter({
-    required this.progress,
-    required this.color,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    if (progress <= 0.0) return;
-
-    final center = Offset(size.width / 2, size.height / 2);
-    final maxRadius = math.sqrt(
-      (size.width * size.width) + (size.height * size.height),
-    );
-    final currentRadius = maxRadius * progress;
-
-    final paint = Paint()
-      ..color = color
-      ..style = PaintingStyle.fill;
-
-    canvas.drawCircle(center, currentRadius, paint);
-  }
-
-  @override
-  bool shouldRepaint(covariant _CircularRevealPainter oldDelegate) =>
-      oldDelegate.progress != progress || oldDelegate.color != color;
 }

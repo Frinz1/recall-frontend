@@ -129,7 +129,7 @@ class _CardEditorDialogState extends State<CardEditorDialog> {
               label: Text(
                 type.label,
                 style: AppTypography.badge.copyWith(
-                  color: selected ? Colors.white : AppColors.textSecondary,
+                  color: selected ? AppColors.textInverse : AppColors.textSecondary,
                 ),
               ),
               selected: selected,

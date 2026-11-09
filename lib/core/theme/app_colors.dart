@@ -10,11 +10,11 @@ class AppColors {
 
   // Surface Tiers
   static Color get bgCanvas =>
-      isDarkMode ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC); // Midnight Slate vs Clean Alabaster Canvas
+      isDarkMode ? const Color(0xFF0F172A) : const Color(0xFFF7F5F0); // Midnight Slate vs Soothing Alabaster Linen
   static Color get bgSurface1 =>
       isDarkMode ? const Color(0xFF1E293B) : const Color(0xFFFFFFFF); // Cool Slate Card vs Crisp White Card
   static Color get bgSurface2 =>
-      isDarkMode ? const Color(0xFF263349) : const Color(0xFFF1F5F9); // Interactive Pill / Soft Slate Input
+      isDarkMode ? const Color(0xFF263349) : const Color(0xFFEDE9DF); // Interactive Pill / Soft Warm Ivory
   static Color get bgSurfaceElevated =>
       isDarkMode ? const Color(0xFF334155) : const Color(0xFFFFFFFF); // High-Elevation Modal / Chip
   static Color get bgCard =>
@@ -22,9 +22,9 @@ class AppColors {
 
   // Border & Dividers
   static Color get borderSubtle =>
-      isDarkMode ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
+      isDarkMode ? const Color(0xFF334155) : const Color(0xFFE7E3DA); // Warm hairline border
   static Color get borderHover =>
-      isDarkMode ? const Color(0xFF475569) : const Color(0xFFCBD5E1);
+      isDarkMode ? const Color(0xFF475569) : const Color(0xFFD6D0C4);
   static Color get borderFocus =>
       isDarkMode ? const Color(0xFF38BDF8) : const Color(0xFF0284C7); // Sky Cyan Focus
 
@@ -54,13 +54,13 @@ class AppColors {
 
   // Typography Contrast Tiers
   static Color get textPrimary =>
-      isDarkMode ? const Color(0xFFF8FAFC) : const Color(0xFF0F172A); // Alabaster vs Deep Slate Navy
+      isDarkMode ? const Color(0xFFF8FAFC) : const Color(0xFF1A1D20); // Alabaster vs Deep Charcoal Espresso
   static Color get textSecondary =>
-      isDarkMode ? const Color(0xFFCBD5E1) : const Color(0xFF334155); // Silver vs Rich Slate
+      isDarkMode ? const Color(0xFFCBD5E1) : const Color(0xFF4A4E54); // Silver vs Warm Slate
   static Color get textMuted =>
-      isDarkMode ? const Color(0xFF94A3B8) : const Color(0xFF64748B); // Cool Grey vs Muted Slate
+      isDarkMode ? const Color(0xFF94A3B8) : const Color(0xFF71767E); // Cool Grey vs Muted Neutral
   static Color get textInverse =>
-      isDarkMode ? const Color(0xFF0F172A) : const Color(0xFFFFFFFF);
+      isDarkMode ? const Color(0xFF0F172A) : const Color(0xFF1A1D20); // High contrast text on primary gold
 
   // Spaced Repetition Rating Colors
   static const Color ratingAgain = Color(0xFFEF4444);
@@ -77,7 +77,7 @@ class AppColors {
   static Color get cardFrontStart =>
       isDarkMode ? const Color(0xFF162038) : const Color(0xFFFFFFFF);
   static Color get cardFrontEnd =>
-      isDarkMode ? const Color(0xFF11182B) : const Color(0xFFF8FAFC);
+      isDarkMode ? const Color(0xFF11182B) : const Color(0xFFF7F5F0);
   static Color get cardBackStart =>
       isDarkMode ? const Color(0xFF132A2E) : const Color(0xFFF0FDF4);
   static Color get cardBackEnd =>
@@ -309,11 +309,11 @@ class AppColors {
 
   // Bento Card Typographic & Component Tokens
   static Color bentoTextPrimary([int? colorValue]) =>
-      isDarkMode ? const Color(0xFFF8FAFC) : const Color(0xFF0F172A);
+      isDarkMode ? const Color(0xFFF8FAFC) : const Color(0xFF1A1D20);
   static Color bentoTextSecondary([int? colorValue]) =>
-      isDarkMode ? const Color(0xFFCBD5E1) : const Color(0xFF334155);
+      isDarkMode ? const Color(0xFFCBD5E1) : const Color(0xFF4A4E54);
   static Color bentoTextMuted([int? colorValue]) =>
-      isDarkMode ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+      isDarkMode ? const Color(0xFF94A3B8) : const Color(0xFF71767E);
 
   static Color bentoBorderColor(int colorValue) =>
       resolveBentoAccent(colorValue).withValues(alpha: isDarkMode ? 0.42 : 0.32);
@@ -322,17 +322,17 @@ class AppColors {
   static Color get bentoPodBackground =>
       isDarkMode ? Colors.black.withValues(alpha: 0.32) : Colors.white.withValues(alpha: 0.72);
   static Color get bentoPodBorder =>
-      isDarkMode ? Colors.white.withValues(alpha: 0.16) : const Color(0xFF0F172A).withValues(alpha: 0.10);
+      isDarkMode ? Colors.white.withValues(alpha: 0.16) : const Color(0xFF1A1D20).withValues(alpha: 0.10);
   static Color get bentoPodText =>
-      isDarkMode ? Colors.white : const Color(0xFF0F172A);
+      isDarkMode ? Colors.white : const Color(0xFF1A1D20);
 
   // Top-Right Launch Action Button Tokens
   static Color bentoLaunchButtonBg([int? colorValue]) =>
       isDarkMode ? Colors.white.withValues(alpha: 0.20) : Colors.white;
   static Color bentoLaunchButtonBorder([int? colorValue]) =>
-      isDarkMode ? Colors.white.withValues(alpha: 0.28) : const Color(0xFFCBD5E1);
+      isDarkMode ? Colors.white.withValues(alpha: 0.28) : const Color(0xFFE7E3DA);
   static Color bentoLaunchButtonIcon([int? colorValue]) =>
-      isDarkMode ? Colors.white : const Color(0xFF0F172A);
+      isDarkMode ? Colors.white : const Color(0xFF1A1D20);
 
   // Progress Bar Tokens
   static Color bentoProgressTrackBg([int? colorValue]) =>

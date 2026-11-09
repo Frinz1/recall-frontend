@@ -387,7 +387,7 @@ class _AuthScreenState extends State<AuthScreen> {
             onPressed: isLoading ? null : _handleVerifyOtp,
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primary,
-              foregroundColor: AppColors.bgCanvas,
+              foregroundColor: AppColors.textInverse,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(999),
               ),
@@ -398,7 +398,7 @@ class _AuthScreenState extends State<AuthScreen> {
                     height: 22,
                     child: CircularProgressIndicator(
                       strokeWidth: 2.5,
-                      valueColor: AlwaysStoppedAnimation<Color>(AppColors.bgCanvas),
+                      valueColor: AlwaysStoppedAnimation<Color>(AppColors.textInverse),
                     ),
                   )
                 : const Text(
@@ -458,7 +458,7 @@ class _AuthScreenState extends State<AuthScreen> {
                 ],
               ),
               child: Center(
-                child: Icon(Icons.bolt_rounded, color: AppColors.bgCanvas, size: 22),
+                child: Icon(Icons.bolt_rounded, color: AppColors.textInverse, size: 22),
               ),
             ),
             const SizedBox(width: 10),
@@ -507,7 +507,7 @@ class _AuthScreenState extends State<AuthScreen> {
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: _isLogin ? FontWeight.w700 : FontWeight.w500,
-                        color: _isLogin ? AppColors.bgCanvas : AppColors.textSecondary,
+                        color: _isLogin ? AppColors.textInverse : AppColors.textSecondary,
                       ),
                     ),
                   ),
@@ -534,7 +534,7 @@ class _AuthScreenState extends State<AuthScreen> {
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: !_isLogin ? FontWeight.w700 : FontWeight.w500,
-                        color: !_isLogin ? AppColors.bgCanvas : AppColors.textSecondary,
+                        color: !_isLogin ? AppColors.textInverse : AppColors.textSecondary,
                       ),
                     ),
                   ),
@@ -688,7 +688,7 @@ class _AuthScreenState extends State<AuthScreen> {
             onPressed: isLoading ? null : _handleSubmit,
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primary,
-              foregroundColor: AppColors.bgCanvas,
+              foregroundColor: AppColors.textInverse,
               elevation: 0,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(999),
@@ -700,7 +700,7 @@ class _AuthScreenState extends State<AuthScreen> {
                     height: 22,
                     child: CircularProgressIndicator(
                       strokeWidth: 2.5,
-                      valueColor: AlwaysStoppedAnimation<Color>(AppColors.bgCanvas),
+                      valueColor: AlwaysStoppedAnimation<Color>(AppColors.textInverse),
                     ),
                   )
                 : Row(

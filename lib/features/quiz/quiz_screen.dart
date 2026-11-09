@@ -266,6 +266,7 @@ class _QuizScreenState extends State<QuizScreen> {
   Widget _buildOptionTile(int index, String optionText) {
     Color bg = AppColors.bgSurface1;
     Color border = AppColors.borderSubtle;
+    Color textColor = AppColors.textPrimary;
     IconData? trailingIcon;
     Color iconColor = Colors.transparent;
 
@@ -273,11 +274,13 @@ class _QuizScreenState extends State<QuizScreen> {
       if (index == _correctOptionIndex) {
         bg = AppColors.successSurface;
         border = AppColors.success;
+        textColor = AppColors.isDarkMode ? Colors.white : const Color(0xFF065F46);
         trailingIcon = Icons.check_circle_rounded;
         iconColor = AppColors.success;
       } else if (index == _selectedOptionIndex) {
         bg = AppColors.dangerSurface;
         border = AppColors.danger;
+        textColor = AppColors.isDarkMode ? Colors.white : const Color(0xFF991B1B);
         trailingIcon = Icons.cancel_rounded;
         iconColor = AppColors.danger;
       }
@@ -300,7 +303,7 @@ class _QuizScreenState extends State<QuizScreen> {
               child: Text(
                 optionText,
                 style: AppTypography.bodyMedium.copyWith(
-                  color: Colors.white,
+                  color: textColor,
                   fontWeight: FontWeight.w500,
                 ),
               ),

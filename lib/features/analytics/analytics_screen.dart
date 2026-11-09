@@ -55,7 +55,7 @@ class AnalyticsScreen extends StatelessWidget {
                               ? '${((mastered / totalCards) * 100).round()}%'
                               : '0%',
                           subtitle: '$mastered of $totalCards cards',
-                          color: AppColors.primaryLight,
+                          color: AppColors.isDarkMode ? AppColors.primaryLight : const Color(0xFFD97706),
                           icon: Icons.military_tech_outlined,
                         ),
                       ),

@@ -196,10 +196,14 @@ class FlipCardWidget extends StatelessWidget {
                             vertical: 6,
                           ),
                           decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.07),
+                            color: AppColors.isDarkMode
+                                ? Colors.white.withValues(alpha: 0.07)
+                                : Colors.black.withValues(alpha: 0.05),
                             borderRadius: BorderRadius.circular(999),
                             border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.14),
+                              color: AppColors.isDarkMode
+                                  ? Colors.white.withValues(alpha: 0.14)
+                                  : AppColors.borderSubtle,
                             ),
                           ),
                           child: Row(
@@ -241,11 +245,11 @@ class FlipCardWidget extends StatelessWidget {
                             color: AppColors.primary.withValues(alpha: 0.38),
                           ),
                         ),
-                        child: const Center(
+                        child: Center(
                           child: Icon(
                             Icons.autorenew_rounded,
                             size: 18,
-                            color: AppColors.primaryLight,
+                            color: AppColors.isDarkMode ? AppColors.primaryLight : AppColors.primary,
                           ),
                         ),
                       ),
@@ -285,7 +289,7 @@ class FlipCardWidget extends StatelessWidget {
                               fontSize: 22,
                               fontWeight: FontWeight.w700,
                               height: 1.38,
-                              color: Colors.white,
+                              color: AppColors.isDarkMode ? Colors.white : AppColors.textPrimary,
                             ),
                           ),
                   ),
@@ -303,7 +307,9 @@ class FlipCardWidget extends StatelessWidget {
                             vertical: 4,
                           ),
                           decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.06),
+                            color: AppColors.isDarkMode
+                                ? Colors.white.withValues(alpha: 0.06)
+                                : Colors.black.withValues(alpha: 0.05),
                             borderRadius: BorderRadius.circular(999),
                             border: Border.all(
                               color: AppColors.accentCyan.withValues(alpha: 0.3),
@@ -462,10 +468,14 @@ class FlipCardWidget extends StatelessWidget {
                           vertical: 5,
                         ),
                         decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.07),
+                          color: AppColors.isDarkMode
+                              ? Colors.white.withValues(alpha: 0.07)
+                              : Colors.black.withValues(alpha: 0.05),
                           borderRadius: BorderRadius.circular(999),
                           border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.12),
+                            color: AppColors.isDarkMode
+                                ? Colors.white.withValues(alpha: 0.12)
+                                : AppColors.borderSubtle,
                           ),
                         ),
                         child: Text(
@@ -489,7 +499,7 @@ class FlipCardWidget extends StatelessWidget {
                       card.answer,
                       textAlign: isCode ? TextAlign.left : TextAlign.center,
                       style: AppTypography.displayMedium.copyWith(
-                        color: Colors.white,
+                        color: AppColors.isDarkMode ? Colors.white : AppColors.textPrimary,
                         fontWeight: FontWeight.w600,
                         fontSize: 20,
                         height: 1.45,
@@ -507,7 +517,9 @@ class FlipCardWidget extends StatelessWidget {
                         vertical: 12,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.07),
+                        color: AppColors.isDarkMode
+                            ? Colors.white.withValues(alpha: 0.07)
+                            : Colors.white.withValues(alpha: 0.75),
                         borderRadius: BorderRadius.circular(18),
                         border: Border.all(
                           color: AppColors.accentCyan.withValues(alpha: 0.35),

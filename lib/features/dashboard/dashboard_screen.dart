@@ -216,7 +216,7 @@ class DashboardScreen extends StatelessWidget {
                         child: _buildStatTile(
                           label: 'Retention',
                           value: '${repo.overallRetentionRate.round()}%',
-                          color: AppColors.primaryLight,
+                          color: AppColors.isDarkMode ? AppColors.primaryLight : const Color(0xFFD97706),
                           icon: Icons.psychology_outlined,
                         ),
                       ),
@@ -264,15 +264,15 @@ class DashboardScreen extends StatelessWidget {
                               Text(
                                 'Manage',
                                 style: AppTypography.badge.copyWith(
-                                  color: AppColors.primaryLight,
+                                  color: AppColors.isDarkMode ? AppColors.primaryLight : const Color(0xFFD97706),
                                   fontSize: 12,
                                 ),
                               ),
                               const SizedBox(width: 4),
-                              const Icon(
+                              Icon(
                                 Icons.arrow_forward_rounded,
                                 size: 14,
-                                color: AppColors.primaryLight,
+                                color: AppColors.isDarkMode ? AppColors.primaryLight : const Color(0xFFD97706),
                               ),
                             ],
                           ),
@@ -499,15 +499,15 @@ class DashboardScreen extends StatelessWidget {
                               Text(
                                 'View All',
                                 style: AppTypography.badge.copyWith(
-                                  color: AppColors.primaryLight,
+                                  color: AppColors.isDarkMode ? AppColors.primaryLight : const Color(0xFFD97706),
                                   fontSize: 12,
                                 ),
                               ),
                               const SizedBox(width: 4),
-                              const Icon(
+                              Icon(
                                 Icons.arrow_forward_rounded,
                                 size: 14,
-                                color: AppColors.primaryLight,
+                                color: AppColors.isDarkMode ? AppColors.primaryLight : const Color(0xFFD97706),
                               ),
                             ],
                           ),
@@ -591,24 +591,48 @@ class DashboardScreen extends StatelessWidget {
           'You completed $reviewedToday / $dailyGoal reviews and mastered all ${repo.totalCardsCount} cards!';
     }
 
+    final isDark = AppColors.isDarkMode;
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [AppColors.heroSurfaceStart, AppColors.heroSurfaceEnd],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        gradient: isDark
+            ? const LinearGradient(
+                colors: [AppColors.heroSurfaceStart, AppColors.heroSurfaceEnd],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              )
+            : const LinearGradient(
+                colors: [Color(0xFFFFFDF8), Color(0xFFFFF7E6)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
         borderRadius: BorderRadius.circular(26),
-        border: Border.all(color: AppColors.primary.withValues(alpha: 0.42), width: 1.2),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.38),
-            blurRadius: 24,
-            offset: const Offset(0, 10),
-          ),
-        ],
+        border: Border.all(
+          color: AppColors.primary.withValues(alpha: isDark ? 0.42 : 0.40),
+          width: 1.2,
+        ),
+        boxShadow: isDark
+            ? [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.38),
+                  blurRadius: 24,
+                  offset: const Offset(0, 10),
+                ),
+              ]
+            : [
+                BoxShadow(
+                  color: const Color(0xFFD97706).withValues(alpha: 0.08),
+                  blurRadius: 20,
+                  offset: const Offset(0, 6),
+                ),
+                BoxShadow(
+                  color: const Color(0xFF1A1D20).withValues(alpha: 0.04),
+                  blurRadius: 10,
+                  offset: const Offset(0, 2),
+                ),
+              ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -632,7 +656,7 @@ class DashboardScreen extends StatelessWidget {
                         style: AppTypography.badge.copyWith(
                           fontSize: 10,
                           fontWeight: FontWeight.w800,
-                          color: AppColors.bgCanvas,
+                          color: const Color(0xFF1A1D20),
                         ),
                       ),
                     ),
@@ -641,14 +665,14 @@ class DashboardScreen extends StatelessWidget {
                       headline,
                       style: AppTypography.displayMedium.copyWith(
                         fontSize: 22,
-                        color: Colors.white,
+                        color: isDark ? Colors.white : AppColors.textPrimary,
                       ),
                     ),
                     const SizedBox(height: 6),
                     Text(
                       subtext,
                       style: AppTypography.bodySmall.copyWith(
-                        color: AppColors.heroTextMuted,
+                        color: isDark ? AppColors.heroTextMuted : AppColors.textSecondary,
                         fontSize: 13,
                         height: 1.4,
                       ),
@@ -662,15 +686,19 @@ class DashboardScreen extends StatelessWidget {
                 width: 96,
                 height: 96,
                 decoration: BoxDecoration(
-                  color: AppColors.heroSurfaceStart,
+                  color: isDark ? AppColors.heroSurfaceStart : Colors.white,
                   borderRadius: BorderRadius.circular(22),
                   border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.18),
+                    color: isDark
+                        ? Colors.white.withValues(alpha: 0.18)
+                        : const Color(0xFFE7E3DA),
                     width: 1.5,
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.35),
+                      color: isDark
+                          ? Colors.black.withValues(alpha: 0.35)
+                          : const Color(0xFF1A1D20).withValues(alpha: 0.08),
                       blurRadius: 14,
                       offset: const Offset(0, 6),
                     ),
@@ -708,7 +736,7 @@ class DashboardScreen extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: AppTypography.badge.copyWith(
                     fontSize: 11,
-                    color: AppColors.heroTextMuted,
+                    color: isDark ? AppColors.heroTextMuted : AppColors.textMuted,
                   ),
                 ),
               ),
@@ -717,7 +745,8 @@ class DashboardScreen extends StatelessWidget {
                 '$reviewedToday / $dailyGoal cards',
                 style: AppTypography.badge.copyWith(
                   fontSize: 11,
-                  color: AppColors.primaryLight,
+                  color: isDark ? AppColors.primaryLight : const Color(0xFFB45309),
+                  fontWeight: FontWeight.w700,
                 ),
               ),
             ],
@@ -728,7 +757,9 @@ class DashboardScreen extends StatelessWidget {
             child: LinearProgressIndicator(
               value: goalProgress,
               minHeight: 7,
-              backgroundColor: Colors.black.withValues(alpha: 0.32),
+              backgroundColor: isDark
+                  ? Colors.black.withValues(alpha: 0.32)
+                  : const Color(0xFFE7E3DA),
               valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
             ),
           ),
@@ -796,12 +827,20 @@ class DashboardScreen extends StatelessWidget {
       }
     }
 
+    final isDark = AppColors.isDarkMode;
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 10),
       decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.24),
+        color: isDark
+            ? Colors.black.withValues(alpha: 0.24)
+            : const Color(0xFFF2ECE1),
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
+        border: Border.all(
+          color: isDark
+              ? Colors.white.withValues(alpha: 0.10)
+              : const Color(0xFFE7E3DA),
+        ),
       ),
       child: Row(
         children: List.generate(7, (index) {
@@ -818,7 +857,9 @@ class DashboardScreen extends StatelessWidget {
                   color: isToday
                       ? AppColors.primary
                       : (isActive
-                          ? Colors.white.withValues(alpha: 0.14)
+                          ? (isDark
+                              ? Colors.white.withValues(alpha: 0.14)
+                              : Colors.white)
                           : Colors.transparent),
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(
@@ -826,7 +867,9 @@ class DashboardScreen extends StatelessWidget {
                         ? AppColors.primaryLight
                         : (isActive
                             ? AppColors.primary.withValues(alpha: 0.5)
-                            : Colors.white.withValues(alpha: 0.08)),
+                            : (isDark
+                                ? Colors.white.withValues(alpha: 0.08)
+                                : Colors.transparent)),
                     width: isToday ? 1.5 : 1.0,
                   ),
                 ),
@@ -840,8 +883,9 @@ class DashboardScreen extends StatelessWidget {
                       style: AppTypography.badge.copyWith(
                         fontSize: 10,
                         color: isToday
-                            ? AppColors.textInverse
-                            : AppColors.heroTextMuted,
+                            ? const Color(0xFF1A1D20)
+                            : (isDark ? AppColors.heroTextMuted : AppColors.textMuted),
+                        fontWeight: isToday ? FontWeight.w700 : FontWeight.w600,
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -850,7 +894,9 @@ class DashboardScreen extends StatelessWidget {
                       style: AppTypography.titleMedium.copyWith(
                         fontSize: 13,
                         fontWeight: FontWeight.w800,
-                        color: isToday ? AppColors.textInverse : Colors.white,
+                        color: isToday
+                            ? const Color(0xFF1A1D20)
+                            : (isDark ? Colors.white : AppColors.textPrimary),
                       ),
                     ),
                     const SizedBox(height: 3),
@@ -860,7 +906,7 @@ class DashboardScreen extends StatelessWidget {
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         color: isToday
-                            ? AppColors.textInverse
+                            ? const Color(0xFF1A1D20)
                             : (isActive ? AppColors.primary : Colors.transparent),
                       ),
                     ),
@@ -905,7 +951,7 @@ class DashboardScreen extends StatelessWidget {
         borderRadius: BorderRadius.circular(24),
         border: Border.all(
           color: deck.isFavorite
-              ? AppColors.primaryLight.withValues(alpha: 0.85)
+              ? (AppColors.isDarkMode ? AppColors.primaryLight : AppColors.primary).withValues(alpha: 0.85)
               : AppColors.bentoBorderColor(deck.colorValue),
           width: 1.3,
         ),
@@ -1197,7 +1243,11 @@ class DashboardScreen extends StatelessWidget {
               children: [
                 Text(
                   'Weakness Radar Alert',
-                  style: AppTypography.titleMedium.copyWith(color: Colors.white, fontSize: 14),
+                  style: AppTypography.titleMedium.copyWith(
+                    color: AppColors.isDarkMode ? Colors.white : AppColors.textPrimary,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
                 const SizedBox(height: 2),
                 Text(

@@ -39,7 +39,9 @@ class DeckDetailScreen extends StatelessWidget {
               IconButton(
                 icon: Icon(
                   deck.isFavorite ? Icons.star_rounded : Icons.star_outline_rounded,
-                  color: deck.isFavorite ? AppColors.primaryLight : AppColors.textMuted,
+                  color: deck.isFavorite
+                      ? (AppColors.isDarkMode ? AppColors.primaryLight : AppColors.primary)
+                      : AppColors.textMuted,
                 ),
                 tooltip: deck.isFavorite ? 'Remove from Starred' : 'Pin to Starred Decks',
                 onPressed: () {

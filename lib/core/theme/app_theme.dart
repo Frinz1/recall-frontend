@@ -4,14 +4,14 @@ class AppTheme {
   AppTheme._();
 
   static ThemeData get lightTheme {
-    const bgCanvas = Color(0xFFF8FAFC);
+    const bgCanvas = Color(0xFFF7F5F0);
     const bgSurface1 = Color(0xFFFFFFFF);
-    const bgSurface2 = Color(0xFFF1F5F9);
-    const borderSubtle = Color(0xFFE2E8F0);
+    const bgSurface2 = Color(0xFFEDE9DF);
+    const borderSubtle = Color(0xFFE7E3DA);
     const primary = Color(0xFFD97706);
-    const textPrimary = Color(0xFF0F172A);
-    const textSecondary = Color(0xFF334155);
-    const textMuted = Color(0xFF64748B);
+    const textPrimary = Color(0xFF1A1D20);
+    const textSecondary = Color(0xFF4A4E54);
+    const textMuted = Color(0xFF71767E);
     const danger = Color(0xFFEF4444);
     const accentCyan = Color(0xFF0284C7);
 
@@ -25,7 +25,7 @@ class AppTheme {
         secondary: accentCyan,
         surface: bgSurface1,
         error: danger,
-        onPrimary: Colors.white,
+        onPrimary: textPrimary,
         onSecondary: Colors.white,
         onSurface: textPrimary,
         onError: Colors.white,

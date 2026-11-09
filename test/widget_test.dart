@@ -7,9 +7,11 @@ import 'package:recall/core/services/study_repository.dart';
 import 'package:recall/core/theme/app_colors.dart';
 import 'package:recall/core/theme/theme_service.dart';
 import 'package:recall/core/widgets/curved_bottom_sheet.dart';
+import 'package:recall/core/widgets/app_button.dart';
 import 'package:recall/core/widgets/quick_create_sheet.dart';
 import 'package:recall/features/auth/auth_screen.dart';
 import 'package:recall/features/deck/deck_detail_screen.dart';
+import 'package:recall/features/quiz/quiz_screen.dart';
 import 'package:recall/features/settings/settings_screen.dart';
 import 'package:recall/features/splash/splash_screen.dart';
 import 'package:recall/features/study/widgets/flip_card_widget.dart';
@@ -528,9 +530,9 @@ void main() {
     // Default is Light Mode
     expect(ThemeService.instance.isDarkMode, isFalse);
     expect(AppColors.isDarkMode, isFalse);
-    expect(AppColors.bgCanvas, const Color(0xFFF8FAFC));
+    expect(AppColors.bgCanvas, const Color(0xFFF7F5F0));
     expect(AppColors.bgCard, const Color(0xFFFFFFFF));
-    expect(AppColors.textPrimary, const Color(0xFF0F172A));
+    expect(AppColors.textPrimary, const Color(0xFF1A1D20));
 
     // Render SettingsScreen
     await tester.pumpWidget(
@@ -565,7 +567,7 @@ void main() {
 
     expect(ThemeService.instance.isDarkMode, isFalse);
     expect(AppColors.isDarkMode, isFalse);
-    expect(AppColors.bgCanvas, const Color(0xFFF8FAFC));
+    expect(AppColors.bgCanvas, const Color(0xFFF7F5F0));
   });
 
   testWidgets('Bento Cards resolve Whisper Tints in Light Mode and Deep Jewel Tones in Dark Mode with crisp contrast',
@@ -577,9 +579,9 @@ void main() {
     final lightSageGrad = AppColors.resolveBentoGradient(AppColors.themeSageEmerald);
     expect(lightSageGrad.colors.first, const Color(0xFFF0FDF4));
     expect(lightSageGrad.colors.last, const Color(0xFFDCFCE7));
-    expect(AppColors.bentoTextPrimary(), const Color(0xFF0F172A));
-    expect(AppColors.bentoPodText, const Color(0xFF0F172A));
-    expect(AppColors.bentoLaunchButtonIcon(), const Color(0xFF0F172A));
+    expect(AppColors.bentoTextPrimary(), const Color(0xFF1A1D20));
+    expect(AppColors.bentoPodText, const Color(0xFF1A1D20));
+    expect(AppColors.bentoLaunchButtonIcon(), const Color(0xFF1A1D20));
 
     // Create a deck and render MainNavigationShell in Light Mode
     await StudyRepository.instance.addSubject(name: 'Algorithms', colorValue: AppColors.themeSageEmerald);
@@ -696,7 +698,7 @@ void main() {
 
     // Title should use dark bentoTextPrimary in Light Mode, NOT white
     final titleText = tester.widget<Text>(find.text('Kubernetes Ingress & Mesh'));
-    expect(titleText.style?.color, const Color(0xFF0F172A));
+    expect(titleText.style?.color, const Color(0xFF1A1D20));
 
     // Stats Bar Total number should use bentoTextPrimary
     expect(find.text('Total'), findsOneWidget);
@@ -765,6 +767,132 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(CurvedBottomSheet), findsNothing);
+  });
+
+  testWidgets('Light Mode text visibility: QuizScreen, FlipCardWidget, AuthScreen, and AppButton render crisp dark text on light surfaces',
+      (WidgetTester tester) async {
+    // 1. Confirm Light Mode defaults
+    await ThemeService.instance.setThemeMode(ThemeMode.light);
+    expect(AppColors.isDarkMode, isFalse);
+    expect(AppColors.textInverse, const Color(0xFF1A1D20));
+
+    // 2. Test FlipCardWidget question & answer text colors in Light Mode
+    final sampleCard = Flashcard(
+      id: 'contrast_test_card',
+      deckId: 'deck_c',
+      question: 'What is the fanout of a B+Tree node?',
+      answer: 'The number of child pointers per internal node.',
+      explanation: 'Determines overall tree height.',
+      tags: const ['BTree', 'Storage'],
+      cardType: FlashcardType.standard,
+      nextReviewDate: DateTime.now(),
+    );
+
+    // Front: Question text must use textPrimary (#1A1D20), NOT Colors.white
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: FlipCardWidget(
+            card: sampleCard,
+            isFlipped: false,
+            currentIndex: 1,
+            totalCards: 1,
+            onFlip: () {},
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final questionWidget = tester.widget<Text>(find.text('What is the fanout of a B+Tree node?'));
+    expect(questionWidget.style?.color, const Color(0xFF1A1D20));
+    expect(questionWidget.style?.color, isNot(equals(Colors.white)));
+
+    // Back: Answer text must use textPrimary (#1A1D20), NOT Colors.white
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: FlipCardWidget(
+            card: sampleCard,
+            isFlipped: true,
+            currentIndex: 1,
+            totalCards: 1,
+            onFlip: () {},
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final answerWidget = tester.widget<Text>(find.text('The number of child pointers per internal node.'));
+    expect(answerWidget.style?.color, const Color(0xFF1A1D20));
+    expect(answerWidget.style?.color, isNot(equals(Colors.white)));
+
+    // 3. Test QuizScreen option tiles in Light Mode
+    final quizDeck = Deck(
+      id: 'quiz_test_deck',
+      title: 'Database Architecture',
+      description: 'ACID and indexing',
+      subjectId: 'sub_1',
+      colorValue: AppColors.themeRoyalIndigo,
+      createdAt: DateTime.now(),
+      cards: [sampleCard],
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: QuizScreen(deck: quizDeck),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Verify option text uses textPrimary (#1A1D20), NOT Colors.white
+    final optionFinder = find.text('The number of child pointers per internal node.');
+    expect(optionFinder, findsOneWidget);
+    final optionWidget = tester.widget<Text>(optionFinder);
+    expect(optionWidget.style?.color, const Color(0xFF1A1D20));
+    expect(optionWidget.style?.color, isNot(equals(Colors.white)));
+
+    // 4. Test AppButton outline and secondary variants in Light Mode
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Column(
+            children: [
+              AppButton(
+                label: 'Outline Button',
+                variant: AppButtonVariant.outline,
+                onPressed: () {},
+              ),
+              AppButton(
+                label: 'Secondary Button',
+                variant: AppButtonVariant.secondary,
+                onPressed: () {},
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Outline button text must use dark amber (#D97706) in Light Mode, NOT pale primaryLight
+    final outlineText = tester.widget<Text>(find.text('Outline Button'));
+    expect(outlineText.style?.color, const Color(0xFFD97706));
+    expect(outlineText.style?.color, isNot(equals(AppColors.primaryLight)));
+
+    // 5. Test AuthScreen tab switcher in Light Mode
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: AuthScreen(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Active 'Sign In' tab text must use textInverse (#1A1D20) on gold, NOT bgCanvas (#F7F5F0)
+    final signInTabText = tester.widget<Text>(find.text('Sign In'));
+    expect(signInTabText.style?.color, const Color(0xFF1A1D20));
+    expect(signInTabText.style?.color, isNot(equals(AppColors.bgCanvas)));
   });
 }
 

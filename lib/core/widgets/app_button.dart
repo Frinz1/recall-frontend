@@ -49,14 +49,18 @@ class _AppButtonState extends State<AppButton> {
       case AppButtonVariant.secondary:
         bg = AppColors.bgSurface2;
         fg = AppColors.textPrimary;
-        bottomLip = const Color(0xFF151E2E);
+        bottomLip = AppColors.isDarkMode
+            ? const Color(0xFF151E2E)
+            : const Color(0xFFD6D0C4);
         borderColor = AppColors.borderSubtle;
         break;
       case AppButtonVariant.outline:
         bg = AppColors.bgSurface1;
-        fg = AppColors.primaryLight;
-        bottomLip = AppColors.primary.withValues(alpha: 0.55);
-        borderColor = AppColors.primary;
+        fg = AppColors.isDarkMode ? AppColors.primaryLight : const Color(0xFFD97706);
+        bottomLip = AppColors.isDarkMode
+            ? AppColors.primary.withValues(alpha: 0.55)
+            : const Color(0xFFD97706).withValues(alpha: 0.35);
+        borderColor = AppColors.isDarkMode ? AppColors.primary : const Color(0xFFD97706);
         break;
       case AppButtonVariant.danger:
         bg = AppColors.danger;
