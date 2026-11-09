@@ -269,13 +269,13 @@ class _AuthScreenState extends State<AuthScreen> {
                     _otpError = null;
                   }),
           borderRadius: BorderRadius.circular(10),
-          child: const Padding(
-            padding: EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(Icons.arrow_back_rounded, size: 18, color: AppColors.textSecondary),
-                SizedBox(width: 6),
+                const SizedBox(width: 6),
                 Text(
                   'Back to account details',
                   style: TextStyle(
@@ -304,7 +304,7 @@ class _AuthScreenState extends State<AuthScreen> {
         ),
         const SizedBox(height: 20),
 
-        const Text(
+        Text(
           'Verify your email',
           style: TextStyle(
             fontSize: 26,
@@ -316,7 +316,7 @@ class _AuthScreenState extends State<AuthScreen> {
         const SizedBox(height: 8),
         Text(
           'Enter the 6-digit verification code sent to $targetEmail to activate your Recall account.',
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 14,
             height: 1.5,
             color: AppColors.textSecondary,
@@ -346,13 +346,13 @@ class _AuthScreenState extends State<AuthScreen> {
             onChanged: (_) {
               if (_otpError != null) setState(() => _otpError = null);
             },
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.w800,
               letterSpacing: 10,
               color: AppColors.textPrimary,
             ),
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               counterText: '',
               hintText: '000000',
               hintStyle: TextStyle(
@@ -393,7 +393,7 @@ class _AuthScreenState extends State<AuthScreen> {
               ),
             ),
             child: isLoading
-                ? const SizedBox(
+                ? SizedBox(
                     width: 22,
                     height: 22,
                     child: CircularProgressIndicator(
@@ -457,12 +457,12 @@ class _AuthScreenState extends State<AuthScreen> {
                   ),
                 ],
               ),
-              child: const Center(
+              child: Center(
                 child: Icon(Icons.bolt_rounded, color: AppColors.bgCanvas, size: 22),
               ),
             ),
             const SizedBox(width: 10),
-            const Text(
+            Text(
               'Recall',
               style: TextStyle(
                 fontSize: 20,
@@ -548,7 +548,7 @@ class _AuthScreenState extends State<AuthScreen> {
         // Greeting & Heading
         Text(
           _isLogin ? 'Welcome back' : 'Create your account',
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 26,
             fontWeight: FontWeight.w700,
             letterSpacing: -0.5,
@@ -561,7 +561,7 @@ class _AuthScreenState extends State<AuthScreen> {
           _isLogin
               ? 'Sign in with your verified Recall credentials.'
               : 'Verify your email with a 6-digit code to start studying.',
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w400,
             color: AppColors.textSecondary,
@@ -586,7 +586,7 @@ class _AuthScreenState extends State<AuthScreen> {
               children: [
                 _buildGoogleLogo(),
                 const SizedBox(width: 10),
-                const Text(
+                Text(
                   'Continue with Google',
                   style: TextStyle(
                     fontSize: 14,
@@ -603,7 +603,7 @@ class _AuthScreenState extends State<AuthScreen> {
         // Divider: OR WITH EMAIL
         Row(
           children: [
-            const Expanded(child: Divider(color: AppColors.borderSubtle, thickness: 1)),
+            Expanded(child: Divider(color: AppColors.borderSubtle, thickness: 1)),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12),
               child: Text(
@@ -616,7 +616,7 @@ class _AuthScreenState extends State<AuthScreen> {
                 ),
               ),
             ),
-            const Expanded(child: Divider(color: AppColors.borderSubtle, thickness: 1)),
+            Expanded(child: Divider(color: AppColors.borderSubtle, thickness: 1)),
           ],
         ),
         const SizedBox(height: 18),
@@ -695,7 +695,7 @@ class _AuthScreenState extends State<AuthScreen> {
               ),
             ),
             child: isLoading
-                ? const SizedBox(
+                ? SizedBox(
                     width: 22,
                     height: 22,
                     child: CircularProgressIndicator(
@@ -768,7 +768,7 @@ class _AuthScreenState extends State<AuthScreen> {
       padding: const EdgeInsets.only(bottom: 6),
       child: Text(
         label,
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 11,
           fontWeight: FontWeight.w700,
           letterSpacing: 1.0,
@@ -797,7 +797,7 @@ class _AuthScreenState extends State<AuthScreen> {
           obscureText: isPassword && _obscurePassword,
           keyboardType: keyboardType,
           onChanged: onChanged,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w500,
             color: AppColors.textPrimary,

@@ -51,7 +51,7 @@ class _DeckListScreenState extends State<DeckListScreen> {
         return Scaffold(
           appBar: AppBar(
             titleSpacing: 20,
-            title: const Text('My Decks & Library', style: AppTypography.titleLarge),
+            title: Text('My Decks & Library', style: AppTypography.titleLarge),
             actions: [
               // Single clean 'Subjects' button in AppBar (No redundant + Deck or + Subject buttons)
               Padding(
@@ -62,7 +62,7 @@ class _DeckListScreenState extends State<DeckListScreen> {
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(20),
-                      side: const BorderSide(color: AppColors.borderSubtle),
+                      side: BorderSide(color: AppColors.borderSubtle),
                     ),
                   ),
                   icon: const Icon(
@@ -101,13 +101,13 @@ class _DeckListScreenState extends State<DeckListScreen> {
                   decoration: InputDecoration(
                     hintText: 'Search decks or topics...',
                     hintStyle: AppTypography.bodySmall.copyWith(color: AppColors.textMuted),
-                    prefixIcon: const Icon(Icons.search_rounded, color: AppColors.textMuted),
+                    prefixIcon: Icon(Icons.search_rounded, color: AppColors.textMuted),
                     filled: true,
                     fillColor: AppColors.bgSurface1,
                     contentPadding: const EdgeInsets.symmetric(vertical: 12),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(14),
-                      borderSide: const BorderSide(color: AppColors.borderSubtle),
+                      borderSide: BorderSide(color: AppColors.borderSubtle),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(14),

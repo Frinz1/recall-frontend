@@ -122,8 +122,8 @@ class ToastFeedback {
               InkWell(
                 onTap: () => messenger.hideCurrentSnackBar(),
                 borderRadius: BorderRadius.circular(8),
-                child: const Padding(
-                  padding: EdgeInsets.all(4),
+                child: Padding(
+                  padding: const EdgeInsets.all(4),
                   child: Icon(
                     Icons.close_rounded,
                     size: 16,

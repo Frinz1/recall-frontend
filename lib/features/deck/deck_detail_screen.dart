@@ -36,7 +36,7 @@ class DeckDetailScreen extends StatelessWidget {
 
         return Scaffold(
           appBar: AppBar(
-            title: const Text('Deck Overview', style: AppTypography.titleLarge),
+            title: Text('Deck Overview', style: AppTypography.titleLarge),
             actions: [
               IconButton(
                 icon: Icon(
@@ -224,7 +224,7 @@ class DeckDetailScreen extends StatelessWidget {
                               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(20),
-                                side: const BorderSide(color: AppColors.borderSubtle),
+                                side: BorderSide(color: AppColors.borderSubtle),
                               ),
                             ),
                             onPressed: () => CardEditorDialog.show(context, deckId: deck.id),
@@ -352,7 +352,7 @@ class DeckDetailScreen extends StatelessWidget {
               IconButton(
                 constraints: const BoxConstraints(),
                 padding: const EdgeInsets.all(6),
-                icon: const Icon(Icons.edit_outlined, size: 18, color: AppColors.textSecondary),
+                icon: Icon(Icons.edit_outlined, size: 18, color: AppColors.textSecondary),
                 tooltip: 'Edit Flashcard',
                 onPressed: () => CardEditorDialog.show(
                   context,
@@ -363,7 +363,7 @@ class DeckDetailScreen extends StatelessWidget {
               IconButton(
                 constraints: const BoxConstraints(),
                 padding: const EdgeInsets.all(6),
-                icon: const Icon(
+                icon: Icon(
                   Icons.delete_outline_rounded,
                   size: 18,
                   color: AppColors.textMuted,
@@ -411,7 +411,7 @@ class DeckDetailScreen extends StatelessWidget {
           const SizedBox(height: 10),
           Row(
             children: [
-              const Icon(Icons.history_rounded, size: 14, color: AppColors.textMuted),
+              Icon(Icons.history_rounded, size: 14, color: AppColors.textMuted),
               const SizedBox(width: 4),
               Expanded(
                 child: Text(

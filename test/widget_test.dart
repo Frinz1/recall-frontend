@@ -5,8 +5,10 @@ import 'package:recall/core/algorithms/sm2_engine.dart';
 import 'package:recall/core/models/flashcard_model.dart';
 import 'package:recall/core/services/study_repository.dart';
 import 'package:recall/core/theme/app_colors.dart';
+import 'package:recall/core/theme/theme_service.dart';
 import 'package:recall/core/widgets/quick_create_sheet.dart';
 import 'package:recall/features/auth/auth_screen.dart';
+import 'package:recall/features/settings/settings_screen.dart';
 import 'package:recall/features/splash/splash_screen.dart';
 import 'package:recall/features/study/widgets/flip_card_widget.dart';
 import 'package:recall/features/subject/subject_list_screen.dart';
@@ -516,5 +518,51 @@ void main() {
     // Verify midnight boundary rollover: stale cloud count from yesterday is ignored today
     repo.debugSetCloudReviewedToday(count: 18, dateKey: '2020-01-01');
     expect(repo.reviewedTodayCount, 0);
+  });
+
+  testWidgets('ThemeService defaults to Clean White & Slate (Light Mode) and switches to Midnight Mode in SettingsScreen',
+      (WidgetTester tester) async {
+    await ThemeService.instance.initializeTheme();
+    // Default is Light Mode
+    expect(ThemeService.instance.isDarkMode, isFalse);
+    expect(AppColors.isDarkMode, isFalse);
+    expect(AppColors.bgCanvas, const Color(0xFFF8FAFC));
+    expect(AppColors.bgCard, const Color(0xFFFFFFFF));
+    expect(AppColors.textPrimary, const Color(0xFF0F172A));
+
+    // Render SettingsScreen
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: SettingsScreen(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('APPEARANCE & THEME'), findsOneWidget);
+    expect(find.text('Theme Mode'), findsOneWidget);
+    expect(find.text('Clean White & Two-Tone (Light)'), findsOneWidget);
+
+    // Tap "Midnight" pill
+    final midnightPill = find.text('Midnight');
+    expect(midnightPill, findsOneWidget);
+    await tester.tap(midnightPill);
+    await tester.pumpAndSettle();
+
+    // Verify switch to Midnight
+    expect(ThemeService.instance.isDarkMode, isTrue);
+    expect(AppColors.isDarkMode, isTrue);
+    expect(AppColors.bgCanvas, const Color(0xFF0F172A));
+    expect(AppColors.bgCard, const Color(0xFF1E293B));
+    expect(AppColors.textPrimary, const Color(0xFFF8FAFC));
+    expect(find.text('Midnight Slate (OLED Dark)'), findsOneWidget);
+
+    // Switch back to Light Mode
+    final lightPill = find.text('Light');
+    await tester.tap(lightPill);
+    await tester.pumpAndSettle();
+
+    expect(ThemeService.instance.isDarkMode, isFalse);
+    expect(AppColors.isDarkMode, isFalse);
+    expect(AppColors.bgCanvas, const Color(0xFFF8FAFC));
   });
 }

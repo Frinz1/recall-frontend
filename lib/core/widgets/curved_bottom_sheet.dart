@@ -52,7 +52,7 @@ class CurvedBottomSheet extends StatelessWidget {
             decoration: BoxDecoration(
               color: AppColors.bgSurface1,
               borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-              border: const Border(
+              border: Border(
                 top: BorderSide(color: AppColors.borderSubtle, width: 1.5),
                 left: BorderSide(color: AppColors.borderSubtle, width: 1.0),
                 right: BorderSide(color: AppColors.borderSubtle, width: 1.0),
@@ -117,7 +117,7 @@ class CurvedBottomSheet extends StatelessWidget {
                     ),
                   ],
                 ),
-                child: const Center(
+                child: Center(
                   child: Icon(
                     Icons.close_rounded,
                     color: AppColors.textPrimary,

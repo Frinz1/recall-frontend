@@ -8,7 +8,7 @@ void main() {
 
   // Configure system navigation and status bar style
   SystemChrome.setSystemUIOverlayStyle(
-    const SystemUiOverlayStyle(
+    SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
       statusBarIconBrightness: Brightness.light,
       systemNavigationBarColor: AppColors.bgSurface1,

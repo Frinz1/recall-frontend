@@ -23,7 +23,7 @@ class AnalyticsScreen extends StatelessWidget {
 
         return Scaffold(
           appBar: AppBar(
-            title: const Text('Learning Analytics', style: AppTypography.titleLarge),
+            title: Text('Learning Analytics', style: AppTypography.titleLarge),
           ),
           body: RefreshIndicator(
             color: AppColors.primary,
@@ -76,7 +76,7 @@ class AnalyticsScreen extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text('Weakness Radar', style: AppTypography.titleMedium),
+                            Text('Weakness Radar', style: AppTypography.titleMedium),
                             Text(
                               'Cards where recall failure rate is ≥ 40%',
                               style: AppTypography.bodySmall.copyWith(color: AppColors.textMuted),
@@ -109,16 +109,16 @@ class AnalyticsScreen extends StatelessWidget {
                         borderRadius: BorderRadius.circular(18),
                         border: Border.all(color: AppColors.borderSubtle),
                       ),
-                      child: const Row(
+                      child: Row(
                         children: [
-                          Icon(Icons.check_circle_rounded, color: AppColors.success, size: 28),
-                          SizedBox(width: 14),
+                          const Icon(Icons.check_circle_rounded, color: AppColors.success, size: 28),
+                          const SizedBox(width: 14),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text('Zero Weak Spots Detected', style: AppTypography.titleMedium),
-                                SizedBox(height: 2),
+                                const SizedBox(height: 2),
                                 Text(
                                   'Your recall across all active decks is above threshold.',
                                   style: AppTypography.bodySmall,
@@ -264,7 +264,7 @@ class AnalyticsScreen extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Flexible(
+              Flexible(
                 child: Text(
                   'Weekly Study Consistency',
                   maxLines: 1,
@@ -360,7 +360,7 @@ class AnalyticsScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('SM-2 Memory Interval Distribution', style: AppTypography.titleMedium),
+          Text('SM-2 Memory Interval Distribution', style: AppTypography.titleMedium),
           const SizedBox(height: 4),
           Text(
             'Tracks cards moving from short-term to long-term retention',

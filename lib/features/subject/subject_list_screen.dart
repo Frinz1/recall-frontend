@@ -19,7 +19,7 @@ class SubjectListScreen extends StatelessWidget {
 
         return Scaffold(
           appBar: AppBar(
-            title: const Text('Subject Categories', style: AppTypography.titleLarge),
+            title: Text('Subject Categories', style: AppTypography.titleLarge),
             actions: [
               Padding(
                 padding: const EdgeInsets.only(right: 16),
@@ -29,7 +29,7 @@ class SubjectListScreen extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(20),
-                      side: const BorderSide(color: AppColors.borderSubtle),
+                      side: BorderSide(color: AppColors.borderSubtle),
                     ),
                   ),
                   icon: const Icon(Icons.add_rounded, size: 17, color: AppColors.primary),

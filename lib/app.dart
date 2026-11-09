@@ -4,6 +4,7 @@ import 'core/services/auth_service.dart';
 import 'core/theme/app_colors.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/app_typography.dart';
+import 'core/theme/theme_service.dart';
 import 'core/widgets/quick_create_sheet.dart';
 import 'features/analytics/analytics_screen.dart';
 import 'features/auth/auth_screen.dart';
@@ -31,11 +32,17 @@ class _RecallAppState extends State<RecallApp> {
     super.initState();
     _bootApp();
     AuthService.instance.addListener(_handleAuthChange);
+    ThemeService.instance.addListener(_handleThemeChange);
+  }
+
+  void _handleThemeChange() {
+    if (!mounted) return;
+    setState(() {});
   }
 
   Future<void> _bootApp() async {
     final splashCompleter = Completer<void>();
-    _splashTimer = Timer(const Duration(milliseconds: 3800), () {
+    _splashTimer = Timer(const Duration(milliseconds: 6000), () {
       if (!splashCompleter.isCompleted) {
         splashCompleter.complete();
       }
@@ -43,6 +50,7 @@ class _RecallAppState extends State<RecallApp> {
 
     await Future.wait([
       AuthService.instance.initializeSession(),
+      ThemeService.instance.initializeTheme(),
       splashCompleter.future,
     ]);
 
@@ -74,6 +82,7 @@ class _RecallAppState extends State<RecallApp> {
   void dispose() {
     _splashTimer?.cancel();
     AuthService.instance.removeListener(_handleAuthChange);
+    ThemeService.instance.removeListener(_handleThemeChange);
     super.dispose();
   }
 
@@ -82,7 +91,9 @@ class _RecallAppState extends State<RecallApp> {
     return MaterialApp(
       title: 'Recall - Smart Flashcards & Learning Companion',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.darkTheme,
+      theme: AppTheme.lightTheme,
+      darkTheme: AppTheme.darkTheme,
+      themeMode: ThemeService.instance.themeMode,
       builder: (context, child) {
         return LayoutBuilder(
           builder: (context, constraints) {
@@ -219,9 +230,12 @@ class _SculptedAnchoredDock extends StatelessWidget {
         clipBehavior: Clip.none,
         children: [
           // Full-width Anchored Sculpted Surface with 28px curved top corners + center cradle arch
-          const Positioned.fill(
+          Positioned.fill(
             child: CustomPaint(
-              painter: _SculptedDockPainter(archOverhang: archOverhang),
+              painter: _SculptedDockPainter(
+                archOverhang: archOverhang,
+                isDarkMode: AppColors.isDarkMode,
+              ),
             ),
           ),
 
@@ -365,8 +379,12 @@ class _SculptedAnchoredDock extends StatelessWidget {
 
 class _SculptedDockPainter extends CustomPainter {
   final double archOverhang;
+  final bool isDarkMode;
 
-  const _SculptedDockPainter({required this.archOverhang});
+  const _SculptedDockPainter({
+    required this.archOverhang,
+    required this.isDarkMode,
+  });
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -404,9 +422,11 @@ class _SculptedDockPainter extends CustomPainter {
       ..lineTo(w, h)
       ..close();
 
-    // Deep upward shadow
+    // Upward dock shadow (subtle in light mode, deep in midnight mode)
     final shadowPaint = Paint()
-      ..color = Colors.black.withValues(alpha: 0.48)
+      ..color = isDarkMode
+          ? Colors.black.withValues(alpha: 0.48)
+          : Colors.black.withValues(alpha: 0.08)
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 18);
     canvas.save();
     canvas.translate(0, -4);
@@ -452,6 +472,7 @@ class _SculptedDockPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _SculptedDockPainter oldDelegate) =>
-      oldDelegate.archOverhang != archOverhang;
+      oldDelegate.archOverhang != archOverhang ||
+      oldDelegate.isDarkMode != isDarkMode;
 }
 

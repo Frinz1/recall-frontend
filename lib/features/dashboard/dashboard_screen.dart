@@ -235,7 +235,7 @@ class DashboardScreen extends StatelessWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Flexible(
+                      Flexible(
                         child: Text(
                           'Subjects',
                           maxLines: 1,
@@ -310,12 +310,12 @@ class DashboardScreen extends StatelessWidget {
                               ),
                             ),
                             const SizedBox(width: 14),
-                            const Expanded(
+                            Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text('No subjects yet', style: AppTypography.titleMedium),
-                                  SizedBox(height: 2),
+                                  const SizedBox(height: 2),
                                   Text(
                                     'Tap to create a color-blocked subject category (e.g. Networking, Calculus).',
                                     style: AppTypography.bodySmall,
@@ -459,7 +459,7 @@ class DashboardScreen extends StatelessWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Flexible(
+                      Flexible(
                         child: Text(
                           'Active Decks',
                           maxLines: 1,

@@ -118,7 +118,7 @@ class _CardEditorDialogState extends State<CardEditorDialog> {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('CARD TYPE', style: AppTypography.labelMedium),
+        Text('CARD TYPE', style: AppTypography.labelMedium),
         const SizedBox(height: 8),
         Wrap(
           spacing: 8,
@@ -209,7 +209,7 @@ class _CardEditorDialogState extends State<CardEditorDialog> {
             contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(14),
-              borderSide: const BorderSide(color: AppColors.borderSubtle),
+              borderSide: BorderSide(color: AppColors.borderSubtle),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(14),

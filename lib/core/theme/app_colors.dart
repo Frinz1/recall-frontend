@@ -1,23 +1,35 @@
 import 'package:flutter/material.dart';
+import 'theme_service.dart';
 
-/// Semantic Design Tokens for Recall — Palette A: Midnight Slate & Warm Gold.
+/// Semantic Design Tokens for Recall.
+/// Supports both Clean White & Two-Tone Light Mode (Default) and Midnight Slate Mode.
 class AppColors {
   AppColors._();
 
-  // Surface Tiers (Midnight Navy Slate — Zero Flat Black)
-  static const Color bgCanvas = Color(0xFF0F172A); // Deep Midnight Slate
-  static const Color bgSurface1 = Color(0xFF1E293B); // Elevated Cool Slate Card
-  static const Color bgSurface2 = Color(0xFF263349); // Interactive Pill / Input Box
-  static const Color bgSurfaceElevated = Color(0xFF334155); // High-Elevation Modal / Chip
-  static const Color bgCard = Color(0xFF1E293B); // Primary Container Surface
+  static bool get isDarkMode => ThemeService.instance.isDarkMode;
 
-  // Border & Dividers (Crisp Slate Borders + 3D Lip)
-  static const Color borderSubtle = Color(0xFF334155);
-  static const Color borderHover = Color(0xFF475569);
-  static const Color borderFocus = Color(0xFF38BDF8); // Sky Cyan Focus
+  // Surface Tiers
+  static Color get bgCanvas =>
+      isDarkMode ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC); // Midnight Slate vs Clean Alabaster Canvas
+  static Color get bgSurface1 =>
+      isDarkMode ? const Color(0xFF1E293B) : const Color(0xFFFFFFFF); // Cool Slate Card vs Crisp White Card
+  static Color get bgSurface2 =>
+      isDarkMode ? const Color(0xFF263349) : const Color(0xFFF1F5F9); // Interactive Pill / Soft Slate Input
+  static Color get bgSurfaceElevated =>
+      isDarkMode ? const Color(0xFF334155) : const Color(0xFFFFFFFF); // High-Elevation Modal / Chip
+  static Color get bgCard =>
+      isDarkMode ? const Color(0xFF1E293B) : const Color(0xFFFFFFFF); // Primary Container Surface
+
+  // Border & Dividers
+  static Color get borderSubtle =>
+      isDarkMode ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
+  static Color get borderHover =>
+      isDarkMode ? const Color(0xFF475569) : const Color(0xFFCBD5E1);
+  static Color get borderFocus =>
+      isDarkMode ? const Color(0xFF38BDF8) : const Color(0xFF0284C7); // Sky Cyan Focus
 
   // Brand Primaries (Warm Gold + Sky Cyan Accents)
-  static const Color primary = Color(0xFFFFB800); // Warm Gold CTA
+  static const Color primary = Color(0xFFFFB800);
   static const Color primaryLight = Color(0xFFFFCA38);
   static const Color primaryDark = Color(0xFFD99B00); // 3D Button Bottom Lip
   static const Color primaryGlow = Color(0x33FFB800);
@@ -28,19 +40,27 @@ class AppColors {
 
   // Functional Status Colors
   static const Color success = Color(0xFF10B981); // Mastered / Easy
-  static const Color successSurface = Color(0xFF064E3B);
+  static Color get successSurface =>
+      isDarkMode ? const Color(0xFF064E3B) : const Color(0xFFD1FAE5);
   static const Color warning = Color(0xFFF59E0B); // Hard / Review soon
-  static const Color warningSurface = Color(0xFF78350F);
+  static Color get warningSurface =>
+      isDarkMode ? const Color(0xFF78350F) : const Color(0xFFFEF3C7);
   static const Color danger = Color(0xFFEF4444); // Again / Forgot
-  static const Color dangerSurface = Color(0xFF7F1D1D);
+  static Color get dangerSurface =>
+      isDarkMode ? const Color(0xFF7F1D1D) : const Color(0xFFFEE2E2);
   static const Color info = Color(0xFF3B82F6); // Good / Normal
-  static const Color infoSurface = Color(0xFF1E3A8A);
+  static Color get infoSurface =>
+      isDarkMode ? const Color(0xFF1E3A8A) : const Color(0xFFDBEAFE);
 
   // Typography Contrast Tiers
-  static const Color textPrimary = Color(0xFFF8FAFC); // Crisp Alabaster White
-  static const Color textSecondary = Color(0xFFCBD5E1); // Soft Slate Silver
-  static const Color textMuted = Color(0xFF94A3B8); // Muted Cool Grey
-  static const Color textInverse = Color(0xFF0F172A); // Deep Slate on Gold
+  static Color get textPrimary =>
+      isDarkMode ? const Color(0xFFF8FAFC) : const Color(0xFF0F172A); // Alabaster vs Deep Slate Navy
+  static Color get textSecondary =>
+      isDarkMode ? const Color(0xFFCBD5E1) : const Color(0xFF334155); // Silver vs Rich Slate
+  static Color get textMuted =>
+      isDarkMode ? const Color(0xFF94A3B8) : const Color(0xFF64748B); // Cool Grey vs Muted Slate
+  static Color get textInverse =>
+      isDarkMode ? const Color(0xFF0F172A) : const Color(0xFFFFFFFF);
 
   // Spaced Repetition Rating Colors
   static const Color ratingAgain = Color(0xFFEF4444);
@@ -54,10 +74,31 @@ class AppColors {
   static const Color heroTextMuted = Color(0xFFC7D2FE);
   static const Color cradleStart = Color(0xFF6366F1);
   static const Color cradleEnd = Color(0xFF10B981);
-  static const Color cardFrontStart = Color(0xFF162038);
-  static const Color cardFrontEnd = Color(0xFF11182B);
-  static const Color cardBackStart = Color(0xFF132A2E);
-  static const Color cardBackEnd = Color(0xFF0F1F2E);
+  static Color get cardFrontStart =>
+      isDarkMode ? const Color(0xFF162038) : const Color(0xFFFFFFFF);
+  static Color get cardFrontEnd =>
+      isDarkMode ? const Color(0xFF11182B) : const Color(0xFFF8FAFC);
+  static Color get cardBackStart =>
+      isDarkMode ? const Color(0xFF132A2E) : const Color(0xFFF0FDF4);
+  static Color get cardBackEnd =>
+      isDarkMode ? const Color(0xFF0F1F2E) : const Color(0xFFDCFCE7);
+
+  // Elevation Shadow Helpers
+  static List<BoxShadow> get cardShadow => isDarkMode
+      ? [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.35),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+        ]
+      : [
+          BoxShadow(
+            color: const Color(0xFF0F172A).withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ];
 
   // Google OAuth Emblem Tokens
   static const Color googleBlue = Color(0xFF4285F4);
@@ -85,7 +126,6 @@ class AppColors {
   /// Generates a rich, vibrant Full-Card Surface Gradient for any Deck or Subject colorValue.
   static LinearGradient resolveBentoGradient(int colorValue) {
     final rgb = colorValue & 0xFFFFFF;
-    // Match the 6 primary bento themes and legacy accent hex codes
     if (rgb == (themeSageEmerald & 0xFFFFFF) || rgb == 0x10B981 || rgb == 0x059669) {
       return const LinearGradient(
         colors: [Color(0xFF1B4332), Color(0xFF2D6A4F)],
@@ -135,7 +175,6 @@ class AppColors {
       );
     }
 
-    // Dynamic fallback: derive deep rich gradient from custom colorValue
     final base = Color(0xFF000000 | rgb);
     final hsl = HSLColor.fromColor(base);
     final darkStart = hsl.withLightness((hsl.lightness * 0.42).clamp(0.16, 0.32)).toColor();
@@ -177,7 +216,6 @@ class AppColors {
   }
 
   /// Smart domain-aware icon resolver for any subject name across all disciplines.
-  /// Returns null when a 2-letter monogram avatar is cleaner than a generic icon.
   static IconData? resolveSubjectIcon(String subjectName) {
     final s = subjectName.trim().toLowerCase();
     if (s.contains('net') || s.contains('cloud') || s.contains('web') || s.contains('routing')) {
@@ -222,11 +260,10 @@ class AppColors {
     if (s.contains('psych') || s.contains('mind') || s.contains('cogn')) {
       return Icons.psychology_outlined;
     }
-    // For any other custom subject, return null so we render a clean 2-letter monogram!
     return null;
   }
 
-  /// Generates a clean 1-2 character monogram (e.g. "Operating Systems" -> "OS", "Nursing" -> "NU").
+  /// Generates a clean 1-2 character monogram.
   static String getSubjectMonogram(String subjectName) {
     final trimmed = subjectName.trim();
     if (trimmed.isEmpty) return 'S';

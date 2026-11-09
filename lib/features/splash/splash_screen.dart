@@ -26,29 +26,32 @@ class _SplashScreenState extends State<SplashScreen>
   late final Animation<double> _darkReveal;
   late final Animation<double> _brandFade;
   late final Animation<Offset> _brandSlideUp;
+  late final Animation<double> _breatheGlow;
   Timer? _timer;
 
   @override
   void initState() {
     super.initState();
 
+    // Extended duration: 6000ms (+2.2s from original 3800ms) to allow at least
+    // 2.5s of peaceful hold time for users to admire the full splash artwork.
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 3600),
+      duration: const Duration(milliseconds: 6000),
     )..forward();
 
-    // 1. 0.00 -> 0.30: Emblem slides in horizontally from right to center on pure white canvas
+    // 1. 0.00 -> 0.20: Emblem slides in horizontally from right to center
     _slideFromRight = Tween<Offset>(
       begin: const Offset(2.5, 0.0),
       end: Offset.zero,
     ).animate(
       CurvedAnimation(
         parent: _controller,
-        curve: const Interval(0.0, 0.30, curve: Curves.easeOutCubic),
+        curve: const Interval(0.0, 0.20, curve: Curves.easeOutCubic),
       ),
     );
 
-    // 2. 0.28 -> 0.68: 3 playful vertical hops in the center
+    // 2. 0.18 -> 0.44: 3 playful vertical hops in the center
     _bounceDy = TweenSequence<double>([
       TweenSequenceItem(
         tween: Tween<double>(begin: 0.0, end: -42.0)
@@ -83,7 +86,7 @@ class _SplashScreenState extends State<SplashScreen>
     ]).animate(
       CurvedAnimation(
         parent: _controller,
-        curve: const Interval(0.28, 0.68),
+        curve: const Interval(0.18, 0.44),
       ),
     );
 
@@ -98,7 +101,7 @@ class _SplashScreenState extends State<SplashScreen>
     ]).animate(
       CurvedAnimation(
         parent: _controller,
-        curve: const Interval(0.28, 0.68),
+        curve: const Interval(0.18, 0.44),
       ),
     );
 
@@ -112,20 +115,20 @@ class _SplashScreenState extends State<SplashScreen>
     ]).animate(
       CurvedAnimation(
         parent: _controller,
-        curve: const Interval(0.28, 0.68),
+        curve: const Interval(0.18, 0.44),
       ),
     );
 
-    // 3. 0.58 -> 0.82: Pure White (#FFFFFF) -> Midnight Slate (AppColors.bgCanvas) radial reveal
+    // 3. 0.38 -> 0.54: Theme-aware radial reveal
     _darkReveal = CurvedAnimation(
       parent: _controller,
-      curve: const Interval(0.58, 0.82, curve: Curves.easeInOutCubic),
+      curve: const Interval(0.38, 0.54, curve: Curves.easeInOutCubic),
     );
 
-    // 4. 0.62 -> 0.90: Wordmark & Tagline slide/fade up underneath the logo
+    // 4. 0.42 -> 0.58: Wordmark & Tagline slide/fade up underneath the logo
     _brandFade = CurvedAnimation(
       parent: _controller,
-      curve: const Interval(0.62, 0.90, curve: Curves.easeOutCubic),
+      curve: const Interval(0.42, 0.58, curve: Curves.easeOutCubic),
     );
 
     _brandSlideUp = Tween<Offset>(
@@ -134,19 +137,38 @@ class _SplashScreenState extends State<SplashScreen>
     ).animate(
       CurvedAnimation(
         parent: _controller,
-        curve: const Interval(0.62, 0.90, curve: Curves.easeOutCubic),
+        curve: const Interval(0.42, 0.58, curve: Curves.easeOutCubic),
+      ),
+    );
+
+    // 5. 0.58 -> 1.00: Subtle breathing pulse while splash artwork is held in view (+2.5s)
+    _breatheGlow = TweenSequence<double>([
+      TweenSequenceItem(
+        tween: Tween<double>(begin: 1.0, end: 1.05)
+            .chain(CurveTween(curve: Curves.easeInOutSine)),
+        weight: 50,
+      ),
+      TweenSequenceItem(
+        tween: Tween<double>(begin: 1.05, end: 1.0)
+            .chain(CurveTween(curve: Curves.easeInOutSine)),
+        weight: 50,
+      ),
+    ]).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: const Interval(0.58, 1.0),
       ),
     );
 
     if (widget.onFinished != null) {
-      _timer = Timer(const Duration(milliseconds: 3800), () {
+      _timer = Timer(const Duration(milliseconds: 6000), () {
         if (mounted && widget.onFinished != null) {
           widget.onFinished!();
         }
       });
     } else if (widget.nextScreen != null) {
       _timer = Timer(
-        const Duration(milliseconds: 3800),
+        const Duration(milliseconds: 6000),
         _checkSessionAndNavigate,
       );
     }
@@ -180,22 +202,33 @@ class _SplashScreenState extends State<SplashScreen>
       builder: (context, _) {
         final dy = _bounceDy.value;
         final jumpRatio = (-dy / 42.0).clamp(0.0, 1.0);
-        final isDarkDominant = _darkReveal.value > 0.5;
+        final isDark = AppColors.isDarkMode;
+        final isDarkDominant = isDark && _darkReveal.value > 0.5;
 
         return Scaffold(
-          backgroundColor: Colors.white,
+          backgroundColor: isDark ? const Color(0xFF0F172A) : Colors.white,
           body: Stack(
             alignment: Alignment.center,
             children: [
-              // Expanding Circular Radial Reveal from Pure White -> Midnight Slate
-              Positioned.fill(
-                child: CustomPaint(
-                  painter: _CircularRevealPainter(
-                    progress: _darkReveal.value,
-                    color: AppColors.bgCanvas,
+              // Radial Reveal matching active theme mode
+              if (isDark)
+                Positioned.fill(
+                  child: CustomPaint(
+                    painter: _CircularRevealPainter(
+                      progress: _darkReveal.value,
+                      color: AppColors.bgCanvas,
+                    ),
+                  ),
+                )
+              else
+                Positioned.fill(
+                  child: CustomPaint(
+                    painter: _CircularRevealPainter(
+                      progress: _darkReveal.value,
+                      color: AppColors.bgCanvas,
+                    ),
                   ),
                 ),
-              ),
 
               // Center Kinetic Brand Choreography
               SafeArea(
@@ -214,8 +247,8 @@ class _SplashScreenState extends State<SplashScreen>
                               Transform.translate(
                                 offset: Offset(0, dy),
                                 child: Transform.scale(
-                                  scaleX: _squashX.value,
-                                  scaleY: _squashY.value,
+                                  scaleX: _squashX.value * _breatheGlow.value,
+                                  scaleY: _squashY.value * _breatheGlow.value,
                                   alignment: Alignment.bottomCenter,
                                   child: Container(
                                     width: 104,
@@ -228,9 +261,11 @@ class _SplashScreenState extends State<SplashScreen>
                                         BoxShadow(
                                           color: isDarkDominant
                                               ? AppColors.primary.withValues(alpha: 0.34)
-                                              : Colors.black.withValues(alpha: 0.16),
+                                              : (isDark
+                                                  ? Colors.black.withValues(alpha: 0.16)
+                                                  : AppColors.primary.withValues(alpha: 0.22)),
                                           blurRadius: 28,
-                                          spreadRadius: isDarkDominant ? 4 : 1,
+                                          spreadRadius: isDarkDominant ? 4 : 2,
                                           offset: const Offset(0, 10),
                                         ),
                                       ],
@@ -281,7 +316,7 @@ class _SplashScreenState extends State<SplashScreen>
 
                         const SizedBox(height: 22),
 
-                        // Wordmark & Subtitle Reveal as Midnight Slate takes over
+                        // Wordmark & Subtitle Reveal
                         FadeTransition(
                           opacity: _brandFade,
                           child: SlideTransition(

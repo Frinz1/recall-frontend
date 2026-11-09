@@ -4,6 +4,7 @@ import '../../core/services/auth_service.dart';
 import '../../core/services/study_repository.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
+import '../../core/theme/theme_service.dart';
 import '../../core/widgets/app_button.dart';
 import '../../core/widgets/curved_bottom_sheet.dart';
 import '../../core/widgets/toast_feedback.dart';
@@ -14,7 +15,11 @@ class SettingsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
-      animation: Listenable.merge([AuthService.instance, StudyRepository.instance]),
+      animation: Listenable.merge([
+        AuthService.instance,
+        StudyRepository.instance,
+        ThemeService.instance,
+      ]),
       builder: (context, _) {
         final user = AuthService.instance.currentUser;
         final repo = StudyRepository.instance;
@@ -24,7 +29,7 @@ class SettingsScreen extends StatelessWidget {
 
         return Scaffold(
           appBar: AppBar(
-            title: const Text('Settings', style: AppTypography.titleLarge),
+            title: Text('Settings', style: AppTypography.titleLarge),
           ),
           body: SingleChildScrollView(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
@@ -51,7 +56,7 @@ class SettingsScreen extends StatelessWidget {
                           (user != null && user.name.isNotEmpty)
                               ? user.name[0].toUpperCase()
                               : 'R',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontWeight: FontWeight.w800,
                             fontSize: 17,
                             color: AppColors.textInverse,
@@ -82,7 +87,25 @@ class SettingsScreen extends StatelessWidget {
 
                 const SizedBox(height: 22),
 
-                // 2. Study & Spaced Repetition Group
+                // 2. Appearance & Theme Group (Light vs Midnight Slate)
+                _buildSectionLabel('APPEARANCE & THEME'),
+                const SizedBox(height: 8),
+                Container(
+                  decoration: BoxDecoration(
+                    color: AppColors.bgCard,
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(color: AppColors.borderSubtle),
+                  ),
+                  child: Column(
+                    children: [
+                      _buildThemeSelectorRow(context),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 22),
+
+                // 3. Study & Spaced Repetition Group
                 _buildSectionLabel('STUDY & SPACED REPETITION'),
                 const SizedBox(height: 8),
                 Container(
@@ -100,7 +123,7 @@ class SettingsScreen extends StatelessWidget {
                         valueText: '${repo.dailyGoalCards} cards/day',
                         onTap: () => _openDailyGoalSheet(context, repo.dailyGoalCards),
                       ),
-                      const Divider(color: AppColors.borderSubtle, height: 1, indent: 56),
+                      Divider(color: AppColors.borderSubtle, height: 1, indent: 56),
                       _buildSwitchRow(
                         icon: Icons.shuffle_rounded,
                         iconColor: AppColors.accentCyan,
@@ -109,7 +132,7 @@ class SettingsScreen extends StatelessWidget {
                         value: repo.shuffleStudyCards,
                         onChanged: (val) => repo.setShuffleStudyCards(val),
                       ),
-                      const Divider(color: AppColors.borderSubtle, height: 1, indent: 56),
+                      Divider(color: AppColors.borderSubtle, height: 1, indent: 56),
                       _buildSwitchRow(
                         icon: Icons.auto_awesome_rounded,
                         iconColor: AppColors.accentPurple,
@@ -124,7 +147,7 @@ class SettingsScreen extends StatelessWidget {
 
                 const SizedBox(height: 22),
 
-                // 3. Cloud & Study Data Group
+                // 4. Cloud & Study Data Group
                 _buildSectionLabel('CLOUD & DATA'),
                 const SizedBox(height: 8),
                 Container(
@@ -152,7 +175,7 @@ class SettingsScreen extends StatelessWidget {
                                 }
                               },
                       ),
-                      const Divider(color: AppColors.borderSubtle, height: 1, indent: 56),
+                      Divider(color: AppColors.borderSubtle, height: 1, indent: 56),
                       _buildNavRow(
                         icon: Icons.restart_alt_rounded,
                         iconColor: AppColors.warning,
@@ -183,7 +206,7 @@ class SettingsScreen extends StatelessWidget {
                         icon: Icons.info_outline_rounded,
                         iconColor: AppColors.accentCyan,
                         title: 'About Recall & Features',
-                        valueText: 'v2.5.0',
+                        valueText: 'v2.6.0',
                         onTap: () => _openAboutRecallSheet(context),
                       ),
                     ],
@@ -278,7 +301,141 @@ class SettingsScreen extends StatelessWidget {
               style: AppTypography.bodySmall.copyWith(color: AppColors.textMuted),
             ),
             const SizedBox(width: 4),
-            const Icon(Icons.chevron_right_rounded, color: AppColors.textMuted, size: 20),
+            Icon(Icons.chevron_right_rounded, color: AppColors.textMuted, size: 20),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildThemeSelectorRow(BuildContext context) {
+    final isDark = ThemeService.instance.isDarkMode;
+    return Material(
+      color: Colors.transparent,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Row(
+          children: [
+            Container(
+              width: 34,
+              height: 34,
+              decoration: BoxDecoration(
+                color: (isDark ? AppColors.primary : AppColors.accentCyan)
+                    .withValues(alpha: 0.16),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(
+                isDark ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
+                color: isDark ? AppColors.primary : AppColors.accentCyan,
+                size: 19,
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Theme Mode',
+                    style: AppTypography.titleMedium.copyWith(fontSize: 15),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    isDark
+                        ? 'Midnight Slate (OLED Dark)'
+                        : 'Clean White & Two-Tone (Light)',
+                    style: AppTypography.bodySmall.copyWith(fontSize: 12),
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: AppColors.bgSurface2,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.borderSubtle),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _buildThemeOptionPill(
+                    context,
+                    isSelected: !isDark,
+                    label: 'Light',
+                    icon: Icons.light_mode_rounded,
+                    onTap: () async {
+                      if (isDark) {
+                        await ThemeService.instance.setThemeMode(ThemeMode.light);
+                        if (context.mounted) {
+                          ToastFeedback.showSuccess(
+                            context,
+                            'Switched to Clean White & Slate (Light Mode).',
+                          );
+                        }
+                      }
+                    },
+                  ),
+                  const SizedBox(width: 4),
+                  _buildThemeOptionPill(
+                    context,
+                    isSelected: isDark,
+                    label: 'Midnight',
+                    icon: Icons.nightlight_round,
+                    onTap: () async {
+                      if (!isDark) {
+                        await ThemeService.instance.setThemeMode(ThemeMode.dark);
+                        if (context.mounted) {
+                          ToastFeedback.showSuccess(
+                            context,
+                            'Switched to Midnight Slate Mode.',
+                          );
+                        }
+                      }
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildThemeOptionPill(
+    BuildContext context, {
+    required bool isSelected,
+    required String label,
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: isSelected ? AppColors.primary : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 14,
+              color: isSelected ? AppColors.textInverse : AppColors.textMuted,
+            ),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: AppTypography.badge.copyWith(
+                fontSize: 11,
+                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                color: isSelected ? AppColors.textInverse : AppColors.textMuted,
+              ),
+            ),
           ],
         ),
       ),
@@ -380,7 +537,7 @@ class SettingsScreen extends StatelessWidget {
     CurvedBottomSheet.show<void>(
       context: context,
       title: 'About Recall',
-      subtitle: 'Version 2.5.0 • Study smarter, remember longer.',
+      subtitle: 'Version 2.6.0 • Study smarter, remember longer.',
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -470,7 +627,7 @@ class SettingsScreen extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Text(
+          Text(
             'This will reset all cards across your decks back to "New Card" (0 reviews) so you can study everything fresh. Your subjects, decks, and flashcards will not be deleted.',
             style: AppTypography.bodyMedium,
             textAlign: TextAlign.center,
@@ -545,7 +702,7 @@ class _EditDisplayNameSheetState extends State<_EditDisplayNameSheet> {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('DISPLAY NAME', style: AppTypography.labelMedium),
+        Text('DISPLAY NAME', style: AppTypography.labelMedium),
         const SizedBox(height: 8),
         TextField(
           controller: _ctrl,

@@ -157,7 +157,7 @@ class _StudySessionScreenState extends State<StudySessionScreen> {
             backgroundColor: AppColors.bgSurface1,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(24),
-              side: const BorderSide(color: AppColors.borderSubtle),
+              side: BorderSide(color: AppColors.borderSubtle),
             ),
             title: Row(
               children: [
@@ -174,7 +174,7 @@ class _StudySessionScreenState extends State<StudySessionScreen> {
                   ),
                 ),
                 const SizedBox(width: 12),
-                const Expanded(
+                Expanded(
                   child: Text('Session Complete!', style: AppTypography.titleLarge),
                 ),
               ],

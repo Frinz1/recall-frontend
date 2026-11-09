@@ -145,7 +145,7 @@ class FlipCardWidget extends StatelessWidget {
       width: double.infinity,
       constraints: const BoxConstraints(minHeight: 340),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
+        gradient: LinearGradient(
           colors: [AppColors.cardFrontStart, AppColors.cardFrontEnd],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -373,7 +373,7 @@ class FlipCardWidget extends StatelessWidget {
       width: double.infinity,
       constraints: const BoxConstraints(minHeight: 340),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
+        gradient: LinearGradient(
           colors: [AppColors.cardBackStart, AppColors.cardBackEnd],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,

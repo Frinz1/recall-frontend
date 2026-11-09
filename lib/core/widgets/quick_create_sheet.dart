@@ -616,7 +616,7 @@ class _QuickCreateSheetState extends State<QuickCreateSheet> {
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: AppColors.borderSubtle),
+        borderSide: BorderSide(color: AppColors.borderSubtle),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),

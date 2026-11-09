@@ -106,7 +106,7 @@ class _QuizScreenState extends State<QuizScreen> {
           backgroundColor: AppColors.bgSurface1,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(24),
-            side: const BorderSide(color: AppColors.borderSubtle),
+            side: BorderSide(color: AppColors.borderSubtle),
           ),
         title: Row(
           children: [
@@ -127,7 +127,7 @@ class _QuizScreenState extends State<QuizScreen> {
               ),
             ),
             const SizedBox(width: 12),
-            const Expanded(
+            Expanded(
               child: Text('Quiz Results', style: AppTypography.titleLarge),
             ),
           ],
@@ -186,7 +186,7 @@ class _QuizScreenState extends State<QuizScreen> {
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Quiz Mode', style: AppTypography.titleMedium),
+            Text('Quiz Mode', style: AppTypography.titleMedium),
             Text(
               'Question ${_currentIndex + 1} of ${_quizCards.length} • Score: $_score',
               style: AppTypography.bodySmall.copyWith(color: AppColors.textMuted),
