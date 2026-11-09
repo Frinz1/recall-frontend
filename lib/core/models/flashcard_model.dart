@@ -157,7 +157,7 @@ class Flashcard {
     return timesForgot / timesReviewed;
   }
 
-  bool get isWeakCard => timesReviewed >= 2 && (failureRate >= 0.40 || easeFactor < 1.9);
+  bool get isWeakCard => timesReviewed >= 1 && (failureRate >= 0.40 || easeFactor < 1.9);
 
   Flashcard copyWith({
     String? id,
