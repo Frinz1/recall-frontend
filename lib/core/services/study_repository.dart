@@ -222,6 +222,15 @@ class StudyRepository extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Re-evaluates every date-dependent value (daily goal, Due Today, calendar strip).
+  /// Called when the app returns to the foreground and when the local calendar day rolls over.
+  Future<void> refreshForCurrentDay({bool syncCloud = true}) async {
+    notifyListeners();
+    if (syncCloud && !_isSyncing) {
+      await fetchAllFromCloud();
+    }
+  }
+
   Future<void> fetchAllFromCloud() async {
     if (!ApiClient.instance.isAuthenticated) return;
 

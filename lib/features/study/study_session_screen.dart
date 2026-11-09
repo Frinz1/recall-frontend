@@ -136,6 +136,9 @@ class _StudySessionScreenState extends State<StudySessionScreen> {
     if (rating == RecallRating.again) {
       return '1d • Reset';
     }
+    if (result.intervalDays >= SM2Engine.maxIntervalDays) {
+      return '${SM2Engine.maxIntervalDays}d • Max';
+    }
     return '${result.intervalDays}d';
   }
 

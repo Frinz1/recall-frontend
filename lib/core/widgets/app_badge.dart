@@ -62,8 +62,9 @@ class AppBadge extends StatelessWidget {
   }
 
   factory AppBadge.scheduledIn(int days) {
+    final cappedDays = days > 180 ? 180 : (days < 1 ? 1 : days);
     return AppBadge(
-      label: 'In ${days < 1 ? 1 : days}d',
+      label: days >= 180 ? 'In 180d • Max' : 'In ${cappedDays}d',
       backgroundColor: const Color(0xFF1E293B),
       textColor: const Color(0xFF94A3B8),
       icon: Icons.event_available_rounded,

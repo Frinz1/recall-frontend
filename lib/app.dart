@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'core/services/auth_service.dart';
+import 'core/services/study_repository.dart';
 import 'core/theme/app_colors.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/app_typography.dart';
@@ -170,8 +171,55 @@ class MainNavigationShell extends StatefulWidget {
   State<MainNavigationShell> createState() => _MainNavigationShellState();
 }
 
-class _MainNavigationShellState extends State<MainNavigationShell> {
+class _MainNavigationShellState extends State<MainNavigationShell> with WidgetsBindingObserver {
   int _currentIndex = 0;
+  Timer? _midnightTimer;
+  late DateTime _lastSeenDay;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _lastSeenDay = _today();
+    _scheduleMidnightRefresh();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _midnightTimer?.cancel();
+    super.dispose();
+  }
+
+  DateTime _today() {
+    final now = DateTime.now();
+    return DateTime(now.year, now.month, now.day);
+  }
+
+  /// Fires a refresh just after local midnight so the daily goal, Due Today,
+  /// and calendar strip roll over even if the app stays open.
+  void _scheduleMidnightRefresh() {
+    _midnightTimer?.cancel();
+    final now = DateTime.now();
+    final nextMidnight = DateTime(now.year, now.month, now.day + 1, 0, 0, 5);
+    _midnightTimer = Timer(nextMidnight.difference(now), () {
+      if (!mounted) return;
+      _lastSeenDay = _today();
+      StudyRepository.instance.refreshForCurrentDay();
+      _scheduleMidnightRefresh();
+    });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed) return;
+    // Timers do not run reliably while backgrounded, so re-check the date on resume.
+    final today = _today();
+    final dayChanged = today != _lastSeenDay;
+    _lastSeenDay = today;
+    StudyRepository.instance.refreshForCurrentDay();
+    if (dayChanged) _scheduleMidnightRefresh();
+  }
 
   @override
   Widget build(BuildContext context) {

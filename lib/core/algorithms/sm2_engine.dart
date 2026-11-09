@@ -44,6 +44,7 @@ class SM2Engine {
 
   static const double minEaseFactor = 1.3;
   static const double defaultEaseFactor = 2.5;
+  static const int maxIntervalDays = 180; // 6-month semester ceiling for college retention
 
   /// Calculates the next review interval and new ease factor using the SM-2 algorithm.
   ///
@@ -74,7 +75,7 @@ class SM2Engine {
 
     // 2. Interval & Repetition calculation
     if (q < 3) {
-      // Failed recall: reset repetitions to 0, card must be reviewed tomorrow
+      // Failed recall: reset repetitions streak to 0, card returns to learning
       nextRepetitions = 0;
       nextIntervalDays = 1;
       nextStatus = CardMasteryStatus.learning;
@@ -85,12 +86,20 @@ class SM2Engine {
       } else if (currentRepetitions == 1) {
         nextIntervalDays = 6;
       } else {
-        nextIntervalDays = (currentIntervalDays * newEaseFactor).round();
+        final rawInterval = (currentIntervalDays * newEaseFactor).round();
+        nextIntervalDays = rawInterval.clamp(1, maxIntervalDays);
+      }
+
+      // Clamp interval to maximum allowed retention window (180 days)
+      if (nextIntervalDays > maxIntervalDays) {
+        nextIntervalDays = maxIntervalDays;
       }
 
       nextRepetitions = currentRepetitions + 1;
 
-      if (nextRepetitions >= 4 && newEaseFactor >= 2.3) {
+      // Transparent 4-Streak Rule: 4 consecutive successful reviews graduate to Mastered,
+      // as long as the graduating answer is Good or Easy ("Hard" means the user still struggled).
+      if (nextRepetitions >= 4 && rating != RecallRating.hard) {
         nextStatus = CardMasteryStatus.mastered;
       } else {
         nextStatus = CardMasteryStatus.reviewing;

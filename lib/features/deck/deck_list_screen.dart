@@ -12,7 +12,10 @@ import '../subject/subject_list_screen.dart';
 import 'deck_detail_screen.dart';
 
 class DeckListScreen extends StatefulWidget {
-  const DeckListScreen({super.key});
+  /// When set, the screen opens pre-filtered to this subject (used when drilling in from a Subject card).
+  final String? initialSubjectId;
+
+  const DeckListScreen({super.key, this.initialSubjectId});
 
   @override
   State<DeckListScreen> createState() => _DeckListScreenState();
@@ -22,6 +25,14 @@ class _DeckListScreenState extends State<DeckListScreen> {
   String? _selectedSubjectId;
   bool _onlyStarred = false;
   String _searchQuery = '';
+
+  bool get _openedFromSubject => widget.initialSubjectId != null;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedSubjectId = widget.initialSubjectId;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -53,8 +64,19 @@ class _DeckListScreenState extends State<DeckListScreen> {
 
         return Scaffold(
           appBar: AppBar(
-            titleSpacing: 20,
-            title: Text('My Decks & Library', style: AppTypography.titleLarge),
+            titleSpacing: _openedFromSubject ? 0 : 20,
+            title: Text(
+              _openedFromSubject
+                  ? subjects
+                          .where((s) => s.id == widget.initialSubjectId)
+                          .map((s) => s.name)
+                          .firstOrNull ??
+                      'Subject Decks'
+                  : 'My Decks & Library',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppTypography.titleLarge,
+            ),
             actions: [
               Padding(
                 padding: const EdgeInsets.only(right: 8),
@@ -79,6 +101,7 @@ class _DeckListScreenState extends State<DeckListScreen> {
                 ),
               ),
               // Single clean 'Subjects' button in AppBar (No redundant + Deck or + Subject buttons)
+              if (!_openedFromSubject)
               Padding(
                 padding: const EdgeInsets.only(right: 16),
                 child: TextButton.icon(
@@ -193,7 +216,9 @@ class _DeckListScreenState extends State<DeckListScreen> {
                               ? 'Tap the star icon on any deck card to pin it to the top of your library.'
                               : (_searchQuery.isNotEmpty
                                   ? 'No decks match "$_searchQuery".'
-                                  : 'Create a subject and your first flashcard deck to start studying.'),
+                                  : (activeSubjectId != null
+                                      ? 'This subject has no decks yet. Create one to start studying it.'
+                                      : 'Create a subject and your first flashcard deck to start studying.')),
                           ctaLabel: _onlyStarred ? 'Show All Decks' : 'Create New Deck',
                           onCtaPressed: _onlyStarred
                               ? () => setState(() => _onlyStarred = false)

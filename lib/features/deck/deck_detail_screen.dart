@@ -444,7 +444,7 @@ class DeckDetailScreen extends StatelessWidget {
                 if (card.isScheduledDue)
                   AppBadge.dueToday()
                 else
-                  AppBadge.scheduledIn(card.intervalDays),
+                  AppBadge.scheduledIn(card.displayIntervalDays),
               ],
               const Spacer(),
               IconButton(
@@ -515,7 +515,7 @@ class DeckDetailScreen extends StatelessWidget {
                 child: Text(
                   card.isNewCard
                       ? 'Not studied yet • Ready for first review (${card.cardType.label})'
-                      : 'Reviewed ${card.timesReviewed}x • Next interval: ${card.intervalDays}d • Ease: ${card.easeFactor.toStringAsFixed(2)}',
+                      : 'Reviewed ${card.timesReviewed}x • Next interval: ${card.displayIntervalDays}d${card.displayIntervalDays >= 180 ? ' (Max)' : ''} • Ease: ${card.easeFactor.toStringAsFixed(2)}',
                   style: AppTypography.bodySmall.copyWith(
                     color: AppColors.textMuted,
                     fontSize: 11,

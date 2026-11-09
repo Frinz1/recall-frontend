@@ -71,5 +71,37 @@ void main() {
 
       expect(ef, greaterThanOrEqualTo(1.3));
     });
+
+    test('4th consecutive Good/Easy graduates to Mastered regardless of ease factor', () {
+      final result = SM2Engine.calculateNextReview(
+        rating: RecallRating.good,
+        currentRepetitions: 3,
+        currentIntervalDays: 14,
+        currentEaseFactor: 1.9, // previously blocked by hidden EF >= 2.3 gate
+      );
+      expect(result.repetitions, 4);
+      expect(result.status, CardMasteryStatus.mastered);
+    });
+
+    test('A Hard rating never graduates a card to Mastered', () {
+      final result = SM2Engine.calculateNextReview(
+        rating: RecallRating.hard,
+        currentRepetitions: 3,
+        currentIntervalDays: 14,
+        currentEaseFactor: 2.5,
+      );
+      expect(result.repetitions, 4);
+      expect(result.status, CardMasteryStatus.reviewing);
+    });
+
+    test('Intervals are capped at 180 days', () {
+      final result = SM2Engine.calculateNextReview(
+        rating: RecallRating.easy,
+        currentRepetitions: 10,
+        currentIntervalDays: 1256,
+        currentEaseFactor: 2.4,
+      );
+      expect(result.intervalDays, SM2Engine.maxIntervalDays);
+    });
   });
 }

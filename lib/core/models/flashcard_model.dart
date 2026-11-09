@@ -1,3 +1,4 @@
+import 'dart:math';
 import '../algorithms/sm2_engine.dart';
 
 enum FlashcardType {
@@ -93,6 +94,19 @@ class Flashcard {
         ? rawTags.map((e) => e.toString()).toList()
         : <String>[];
 
+    final rawInterval = (json['intervalDays'] as num?)?.toInt() ?? 0;
+    final lastReviewed = json['lastReviewedDate'] != null
+        ? DateTime.tryParse(json['lastReviewedDate'].toString())?.toLocal()
+        : null;
+    var nextReview = json['nextReviewDate'] != null
+        ? DateTime.tryParse(json['nextReviewDate'].toString())?.toLocal() ?? DateTime.now()
+        : DateTime.now();
+    // Legacy cards scheduled before the 180-day cap: pull the due date back in line with the cap.
+    if (rawInterval > SM2Engine.maxIntervalDays && lastReviewed != null) {
+      final cappedDue = lastReviewed.add(const Duration(days: SM2Engine.maxIntervalDays));
+      if (nextReview.isAfter(cappedDue)) nextReview = cappedDue;
+    }
+
     return Flashcard(
       id: json['id']?.toString() ?? '',
       deckId: json['deckId']?.toString() ?? '',
@@ -102,14 +116,10 @@ class Flashcard {
       tags: parsedTags,
       cardType: FlashcardType.fromString(json['cardType']?.toString()),
       repetitions: (json['repetitions'] as num?)?.toInt() ?? 0,
-      intervalDays: (json['intervalDays'] as num?)?.toInt() ?? 0,
+      intervalDays: min(SM2Engine.maxIntervalDays, rawInterval),
       easeFactor: (json['easeFactor'] as num?)?.toDouble() ?? 2.5,
-      nextReviewDate: json['nextReviewDate'] != null
-          ? DateTime.tryParse(json['nextReviewDate'].toString())?.toLocal() ?? DateTime.now()
-          : DateTime.now(),
-      lastReviewedDate: json['lastReviewedDate'] != null
-          ? DateTime.tryParse(json['lastReviewedDate'].toString())?.toLocal()
-          : null,
+      nextReviewDate: nextReview,
+      lastReviewedDate: lastReviewed,
       timesReviewed: (json['timesReviewed'] as num?)?.toInt() ?? 0,
       timesForgot: (json['timesForgot'] as num?)?.toInt() ?? 0,
       masteryStatus: parseMasteryStatus(json['masteryStatus']?.toString()),
@@ -136,6 +146,10 @@ class Flashcard {
     };
   }
 
+  /// Returns review interval safely capped at 180 days (standard semester maximum)
+  int get displayIntervalDays =>
+      intervalDays > SM2Engine.maxIntervalDays ? SM2Engine.maxIntervalDays : intervalDays;
+
   /// True when the card is newly created and has never been studied yet
   bool get isNewCard => timesReviewed == 0;
 
@@ -157,7 +171,11 @@ class Flashcard {
     return timesForgot / timesReviewed;
   }
 
-  bool get isWeakCard => timesReviewed >= 2 && (failureRate >= 0.40 || easeFactor < 1.9);
+  /// True only for unmastered cards with persistent difficulty (>= 2 reviews and fail rate >= 40% or low EF)
+  bool get isWeakCard =>
+      masteryStatus != CardMasteryStatus.mastered &&
+      timesReviewed >= 2 &&
+      (failureRate >= 0.40 || easeFactor < 1.9);
 
   Flashcard copyWith({
     String? id,
@@ -271,7 +289,10 @@ class Deck {
   int get dueCardsCount => cards.where((c) => c.isDue).length;
   int get masteredCount => cards.where((c) => c.masteryStatus == CardMasteryStatus.mastered).length;
   int get unmasteredCount => cards.where((c) => c.masteryStatus != CardMasteryStatus.mastered).length;
-  int get learningCount => cards.where((c) => c.masteryStatus == CardMasteryStatus.learning).length;
+  /// Cards that were studied but sent back by an "Again" rating (excludes never-studied new cards).
+  int get learningCount => cards
+      .where((c) => c.timesReviewed > 0 && c.masteryStatus == CardMasteryStatus.learning)
+      .length;
   int get reviewingCount => cards.where((c) => c.masteryStatus == CardMasteryStatus.reviewing).length;
 
   double get graduatedProgress {

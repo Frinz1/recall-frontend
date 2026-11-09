@@ -6,6 +6,7 @@ import '../../core/theme/theme_service.dart';
 import '../../core/widgets/empty_state_view.dart';
 import '../../core/widgets/quick_create_sheet.dart';
 import '../../core/widgets/toast_feedback.dart';
+import '../deck/deck_list_screen.dart';
 
 class SubjectListScreen extends StatelessWidget {
   const SubjectListScreen({super.key});
@@ -66,7 +67,10 @@ class SubjectListScreen extends StatelessWidget {
                     final cardCount = subDecks.fold(0, (sum, d) => sum + d.totalCards);
                     final masteredCount = subDecks.fold(0, (sum, d) => sum + d.masteredCount);
                     final dueCount = subDecks.fold(0, (sum, d) => sum + d.scheduledDueCount);
-                    final progressValue = cardCount == 0 ? 0.0 : (masteredCount / cardCount);
+                    // Same graduated formula as Deck Overview / Deck list, weighted by each deck's card count
+                    final weightedScore =
+                        subDecks.fold(0.0, (sum, d) => sum + d.graduatedProgress * d.totalCards);
+                    final progressValue = cardCount == 0 ? 0.0 : (weightedScore / cardCount).clamp(0.0, 1.0);
                     final progressPct = (progressValue * 100).round();
 
                     final resolvedIcon = AppColors.resolveSubjectIcon(sub.name);
@@ -75,7 +79,10 @@ class SubjectListScreen extends StatelessWidget {
 
                     Color statusDotColor = dueCount > 0 ? AppColors.warning : accent;
 
-                    return Container(
+                    return GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () => _openSubjectDecks(context, sub.id),
+                      child: Container(
                       margin: const EdgeInsets.only(bottom: 16),
                       padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
@@ -212,11 +219,7 @@ class SubjectListScreen extends StatelessWidget {
                                     ),
                                   ),
                                   GestureDetector(
-                                    onTap: () => QuickCreateSheet.show(
-                                      context,
-                                      initialTab: 1,
-                                      existingSubject: sub,
-                                    ),
+                                    onTap: () => _openSubjectDecks(context, sub.id),
                                     child: Container(
                                       width: 34,
                                       height: 34,
@@ -360,11 +363,20 @@ class SubjectListScreen extends StatelessWidget {
                           ),
                         ],
                       ),
+                      ),
                     );
                   },
                 ),
         );
       },
+    );
+  }
+
+  void _openSubjectDecks(BuildContext context, String subjectId) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => DeckListScreen(initialSubjectId: subjectId),
+      ),
     );
   }
 }
