@@ -4,6 +4,7 @@ import '../../core/services/auth_service.dart';
 import '../../core/services/study_repository.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
+import '../../core/theme/theme_service.dart';
 import '../../core/widgets/app_button.dart';
 import '../../core/widgets/empty_state_view.dart';
 import '../../core/widgets/quick_create_sheet.dart';
@@ -37,7 +38,7 @@ class DashboardScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
-      animation: Listenable.merge([StudyRepository.instance, AuthService.instance]),
+      animation: Listenable.merge([StudyRepository.instance, AuthService.instance, ThemeService.instance]),
       builder: (context, _) {
         final repo = StudyRepository.instance;
         final user = AuthService.instance.currentUser;
@@ -437,7 +438,7 @@ class DashboardScreen extends StatelessWidget {
                                         ),
                                         const SizedBox(height: 2),
                                         Text(
-                                          '$count ${count == 1 ? 'deck' : 'decks'} • $cardCount cards',
+                                          '$count ${count == 1 ? 'deck' : 'decks'} • $cardCount ${cardCount == 1 ? 'card' : 'cards'}',
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
                                           style: AppTypography.bodySmall.copyWith(
@@ -491,8 +492,13 @@ class DashboardScreen extends StatelessWidget {
                       InkWell(
                         borderRadius: BorderRadius.circular(20),
                         onTap: onNavigateToDecks,
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: AppColors.bgSurface1,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: AppColors.borderSubtle),
+                          ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
@@ -565,30 +571,30 @@ class DashboardScreen extends StatelessWidget {
       subtext =
           'Create a Subject and Flashcard Deck to begin your SM-2 spaced repetition schedule.';
     } else if (scheduledDue > 0) {
-      headline = '$scheduledDue Cards Due Today';
+      headline = '$scheduledDue ${scheduledDue == 1 ? 'Card' : 'Cards'} Due Today';
       subtext = remainingGoal > 0
           ? 'Complete your scheduled reviews ($remainingGoal left for your $dailyGoal-card daily goal).'
           : (newCount > 0
-              ? 'Plus $newCount new cards ready ($reviewedToday / $dailyGoal daily goal).'
+              ? 'Plus $newCount new ${newCount == 1 ? 'card' : 'cards'} ready ($reviewedToday / $dailyGoal daily goal).'
               : 'Complete your scheduled SM-2 reviews today to extend retention.');
     } else if (newCount > 0 && totalDue > 0) {
-      headline = '$newCount New Cards Ready';
+      headline = '$newCount New ${newCount == 1 ? 'Card' : 'Cards'} Ready';
       subtext = remainingGoal > 0
           ? 'Start your first study pass ($remainingGoal left for your $dailyGoal-card daily goal).'
           : 'Start your first study pass on these flashcards to schedule SM-2 intervals.';
     } else if (remainingGoal > 0 && repo.totalCardsCount > 0) {
-      headline = '$remainingGoal Cards Left for Daily Goal';
+      headline = '$remainingGoal ${remainingGoal == 1 ? 'Card' : 'Cards'} Left for Daily Goal';
       subtext = unmasteredCount > 0
-          ? 'You have $unmasteredCount cards still in learning/reviewing ($reviewedToday / $dailyGoal daily goal). Keep practicing!'
+          ? 'You have $unmasteredCount ${unmasteredCount == 1 ? 'card' : 'cards'} still in learning/reviewing ($reviewedToday / $dailyGoal daily goal). Keep practicing!'
           : 'You completed $reviewedToday / $dailyGoal reviews today. Review your decks to hit your daily target!';
     } else if (unmasteredCount > 0) {
-      headline = '$unmasteredCount Cards Still Learning';
+      headline = '$unmasteredCount ${unmasteredCount == 1 ? 'Card' : 'Cards'} Still Learning';
       subtext =
-          'Daily goal reached ($reviewedToday / $dailyGoal)! Practice your $unmasteredCount unmastered cards anytime.';
+          'Daily goal reached ($reviewedToday / $dailyGoal)! Practice your $unmasteredCount unmastered ${unmasteredCount == 1 ? 'card' : 'cards'} anytime.';
     } else {
       headline = 'All Caught Up Today!';
       subtext =
-          'You completed $reviewedToday / $dailyGoal reviews and mastered all ${repo.totalCardsCount} cards!';
+          'You completed $reviewedToday / $dailyGoal reviews and mastered all ${repo.totalCardsCount} ${repo.totalCardsCount == 1 ? 'card' : 'cards'}!';
     }
 
     final isDark = AppColors.isDarkMode;
@@ -742,7 +748,7 @@ class DashboardScreen extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               Text(
-                '$reviewedToday / $dailyGoal cards',
+                '$reviewedToday / $dailyGoal ${dailyGoal == 1 ? 'card' : 'cards'}',
                 style: AppTypography.badge.copyWith(
                   fontSize: 11,
                   color: isDark ? AppColors.primaryLight : const Color(0xFFB45309),
@@ -1141,7 +1147,7 @@ class DashboardScreen extends StatelessWidget {
                 Text(
                   deck.description.isNotEmpty
                       ? deck.description
-                      : '${deck.totalCards} flashcards • ${deck.masteredCount} mastered',
+                      : '${deck.totalCards} ${deck.totalCards == 1 ? 'card' : 'cards'} • ${deck.masteredCount} mastered',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: AppTypography.bodySmall.copyWith(
@@ -1251,7 +1257,7 @@ class DashboardScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  '$count concepts have high failure rates. Check Stats to drill them.',
+                  '$count ${count == 1 ? 'concept has' : 'concepts have'} high failure rates after 2+ reviews. Check Stats to drill them.',
                   style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary),
                 ),
               ],

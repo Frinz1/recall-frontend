@@ -175,31 +175,36 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
 
   @override
   Widget build(BuildContext context) {
-    final screens = [
-      DashboardScreen(
-        onNavigateToDecks: () => setState(() => _currentIndex = 1),
-        onNavigateToSettings: () => setState(() => _currentIndex = 3),
-      ),
-      const DeckListScreen(),
-      const AnalyticsScreen(),
-      const SettingsScreen(),
-    ];
+    return AnimatedBuilder(
+      animation: ThemeService.instance,
+      builder: (context, _) {
+        final screens = [
+          DashboardScreen(
+            onNavigateToDecks: () => setState(() => _currentIndex = 1),
+            onNavigateToSettings: () => setState(() => _currentIndex = 3),
+          ),
+          const DeckListScreen(),
+          const AnalyticsScreen(),
+          const SettingsScreen(),
+        ];
 
-    return Scaffold(
-      body: IndexedStack(
-        index: _currentIndex,
-        children: screens,
-      ),
-      bottomNavigationBar: _SculptedAnchoredDock(
-        currentIndex: _currentIndex,
-        onTabSelected: (index) => setState(() => _currentIndex = index),
-        onCenterCreatePressed: () {
-          QuickCreateSheet.show(
-            context,
-            initialTab: _currentIndex == 1 ? 0 : 0,
-          );
-        },
-      ),
+        return Scaffold(
+          body: IndexedStack(
+            index: _currentIndex,
+            children: screens,
+          ),
+          bottomNavigationBar: _SculptedAnchoredDock(
+            currentIndex: _currentIndex,
+            onTabSelected: (index) => setState(() => _currentIndex = index),
+            onCenterCreatePressed: () {
+              QuickCreateSheet.show(
+                context,
+                initialTab: _currentIndex == 1 ? 0 : 0,
+              );
+            },
+          ),
+        );
+      },
     );
   }
 }

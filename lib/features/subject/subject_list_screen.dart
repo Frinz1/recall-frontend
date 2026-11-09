@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../core/services/study_repository.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
+import '../../core/theme/theme_service.dart';
 import '../../core/widgets/empty_state_view.dart';
 import '../../core/widgets/quick_create_sheet.dart';
 import '../../core/widgets/toast_feedback.dart';
@@ -11,8 +12,9 @@ class SubjectListScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    Theme.of(context);
     return AnimatedBuilder(
-      animation: StudyRepository.instance,
+      animation: Listenable.merge([StudyRepository.instance, ThemeService.instance]),
       builder: (context, _) {
         final repo = StudyRepository.instance;
         final subjects = repo.subjects;

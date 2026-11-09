@@ -481,7 +481,7 @@ class DeckDetailScreen extends StatelessWidget {
     CurvedBottomSheet.show<void>(
       context: context,
       title: 'Reset Study Progress?',
-      subtitle: 'Restore all ${deck.totalCards} cards in "${deck.title}" to unstudied state',
+      subtitle: 'Restore all ${deck.totalCards} ${deck.totalCards == 1 ? 'card' : 'cards'} in "${deck.title}" to unstudied state',
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [

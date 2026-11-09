@@ -12,11 +12,13 @@ import 'widgets/flip_card_widget.dart';
 class StudySessionScreen extends StatefulWidget {
   final Deck deck;
   final bool onlyDueCards;
+  final String? targetCardId;
 
   const StudySessionScreen({
     super.key,
     required this.deck,
     this.onlyDueCards = false,
+    this.targetCardId,
   });
 
   @override
@@ -41,7 +43,10 @@ class _StudySessionScreenState extends State<StudySessionScreen> {
     _sessionStartTime = DateTime.now();
     final repo = StudyRepository.instance;
     final activeDeck = repo.getDeckById(widget.deck.id) ?? widget.deck;
-    if (widget.onlyDueCards) {
+    if (widget.targetCardId != null) {
+      final targeted = activeDeck.cards.where((c) => c.id == widget.targetCardId).toList();
+      _sessionCards = targeted.isNotEmpty ? targeted : List<Flashcard>.from(activeDeck.cards);
+    } else if (widget.onlyDueCards) {
       _sessionCards = activeDeck.cards.where((c) {
         if (!repo.includeNewInDue && c.isNewCard) return false;
         return c.isDue;
@@ -69,7 +74,7 @@ class _StudySessionScreenState extends State<StudySessionScreen> {
         });
     }
 
-    if (repo.shuffleStudyCards && _sessionCards.length > 1) {
+    if (widget.targetCardId == null && repo.shuffleStudyCards && _sessionCards.length > 1) {
       _sessionCards.shuffle();
     }
 
@@ -184,7 +189,7 @@ class _StudySessionScreenState extends State<StudySessionScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'You reviewed $total flashcards in ${durationSec < 60 ? '${durationSec}s' : '${(durationSec / 60).ceil()}m'}. Your recall accuracy for this session is $retention%.',
+                  'You reviewed $total ${total == 1 ? 'flashcard' : 'flashcards'} in ${durationSec < 60 ? '${durationSec}s' : '${(durationSec / 60).ceil()}m'}. Your recall accuracy for this session is $retention%.',
                   style: AppTypography.bodyMedium,
                 ),
                 const SizedBox(height: 20),

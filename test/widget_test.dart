@@ -10,10 +10,13 @@ import 'package:recall/core/widgets/curved_bottom_sheet.dart';
 import 'package:recall/core/widgets/app_button.dart';
 import 'package:recall/core/widgets/quick_create_sheet.dart';
 import 'package:recall/features/auth/auth_screen.dart';
+import 'package:recall/features/dashboard/dashboard_screen.dart';
 import 'package:recall/features/deck/deck_detail_screen.dart';
+import 'package:recall/features/deck/deck_list_screen.dart';
 import 'package:recall/features/quiz/quiz_screen.dart';
 import 'package:recall/features/settings/settings_screen.dart';
 import 'package:recall/features/splash/splash_screen.dart';
+import 'package:recall/features/study/study_session_screen.dart';
 import 'package:recall/features/study/widgets/flip_card_widget.dart';
 import 'package:recall/features/subject/subject_list_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -893,6 +896,166 @@ void main() {
     final signInTabText = tester.widget<Text>(find.text('Sign In'));
     expect(signInTabText.style?.color, const Color(0xFF1A1D20));
     expect(signInTabText.style?.color, isNot(equals(AppColors.bgCanvas)));
+  });
+
+  testWidgets(
+      'Verification: Pluralization (1 card vs N cards), Settings version removal, View All container match, FlipCard educational badge, and DeckList theme reactivity',
+      (WidgetTester tester) async {
+    final repo = StudyRepository.instance;
+    repo.setActiveUser('user_test_plural_and_theme');
+    await repo.clearLocalState();
+
+    // 1. Check FlipCardWidget educational icon and 10px rounded container
+    final sampleCard = Flashcard(
+      id: 'fc_test_1',
+      deckId: 'd_1',
+      question: 'Define B+Tree Fan-out',
+      answer: 'Maximum number of child pointers per internal node.',
+      tags: const ['DB'],
+      nextReviewDate: DateTime.now(),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: FlipCardWidget(
+            card: sampleCard,
+            isFlipped: false,
+            onFlip: () {},
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Check educational icon is present
+    expect(find.byIcon(Icons.school_rounded), findsOneWidget);
+    // Badge text still renders properly
+    expect(find.text('CONCEPT • NEW'), findsOneWidget);
+
+    // 2. SettingsScreen: Version "v2.6.0" and "Version 2.6.0" must NOT appear
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: SettingsScreen(),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('About Recall & Features'), findsOneWidget);
+    expect(find.text('v2.6.0'), findsNothing);
+    expect(find.textContaining('Version 2.6.0'), findsNothing);
+
+    // 3. DashboardScreen: 1 card pluralization & View All container button
+    final subject = await repo.addSubject(
+      name: 'Computer Networks',
+      colorValue: 0xFF3B82F6,
+    );
+    final deck = await repo.addDeck(
+      subjectId: subject!.id,
+      title: 'OSI Model',
+      description: '7-Layer Network Architecture',
+      colorValue: 0xFF3B82F6,
+    );
+    await repo.addCardToDeck(
+      deckId: deck!.id,
+      question: 'Which layer handles routing?',
+      answer: 'Network Layer (Layer 3)',
+      explanation: 'IP packets routed across subnets',
+      tags: const ['Networking'],
+      cardType: FlashcardType.standard,
+    );
+    await repo.setDailyGoalCards(5);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: DashboardScreen(
+          onNavigateToDecks: () {},
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Should show "1 New Card Ready" (singular)
+    expect(find.text('1 New Card Ready'), findsOneWidget);
+    // Subjects row should say "1 deck • 1 card" (singular)
+    expect(find.text('1 deck • 1 card'), findsOneWidget);
+    // Active Decks header has "View All" with forward arrow
+    expect(find.text('View All'), findsOneWidget);
+    expect(find.text('Manage'), findsOneWidget);
+
+    // 4. DeckListScreen: Deck card pluralization and Theme reactivity
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: DeckListScreen(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // 1 card in deck list card
+    expect(find.text('1 card • 0 mastered'), findsOneWidget);
+
+    // Change theme mode and verify DeckList repaints reactively
+    await ThemeService.instance.toggleTheme();
+    await tester.pumpAndSettle();
+    expect(find.text('1 card • 0 mastered'), findsOneWidget);
+    await ThemeService.instance.setThemeMode(ThemeMode.light);
+    await tester.pumpAndSettle();
+
+    // 5. SettingsScreen: 1 card pluralization in Daily Goal & Reset All
+    await repo.setDailyGoalCards(1);
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: SettingsScreen(),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('1 card/day'), findsOneWidget);
+    expect(find.text('1 card'), findsOneWidget);
+    expect(find.text('1 cards'), findsNothing);
+    expect(find.text('1 cards/day'), findsNothing);
+
+    // 6. Weakness Radar Option B threshold verification (timesReviewed >= 2)
+    final weakCandidate1Review = Flashcard(
+      id: 'fc_weak_1',
+      deckId: deck.id,
+      question: 'Candidate with 1 review and 1 forgot',
+      answer: 'A',
+      timesReviewed: 1,
+      timesForgot: 1,
+      easeFactor: 1.7,
+      nextReviewDate: DateTime.now(),
+    );
+    // timesReviewed < 2 must NOT be classified as weak card under Option B
+    expect(weakCandidate1Review.isWeakCard, isFalse);
+
+    final weakCandidate2Reviews = weakCandidate1Review.copyWith(timesReviewed: 2);
+    // timesReviewed >= 2 with failureRate >= 0.40 or EF < 1.9 must be weak card
+    expect(weakCandidate2Reviews.isWeakCard, isTrue);
+
+    // 7. StudySessionScreen targeted drilling
+    await repo.addCardToDeck(
+      deckId: deck.id,
+      question: 'Define CIDR Subnetting',
+      answer: 'Classless Inter-Domain Routing',
+      explanation: 'Subnet masking without fixed network classes',
+      tags: const ['Networking'],
+      cardType: FlashcardType.definition,
+    );
+
+    final updatedDeck = repo.getDeckById(deck.id)!;
+    final cardB = updatedDeck.cards.last;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: StudySessionScreen(
+          deck: updatedDeck,
+          targetCardId: cardB.id,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    // Targeted card question is present, other card is not
+    expect(find.text('Define CIDR Subnetting'), findsOneWidget);
+    expect(find.text('Which layer handles routing?'), findsNothing);
   });
 }
 

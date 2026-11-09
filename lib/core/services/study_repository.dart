@@ -168,7 +168,7 @@ class StudyRepository extends ChangeNotifier {
   }
 
   Future<void> setDailyGoalCards(int goal) async {
-    _dailyGoalCards = goal.clamp(5, 200);
+    _dailyGoalCards = goal.clamp(1, 200);
     notifyListeners();
     await _saveToCache();
   }

@@ -120,7 +120,8 @@ class SettingsScreen extends StatelessWidget {
                         icon: Icons.flag_rounded,
                         iconColor: AppColors.primary,
                         title: 'Daily Review Goal',
-                        valueText: '${repo.dailyGoalCards} cards/day',
+                        valueText:
+                            '${repo.dailyGoalCards} ${repo.dailyGoalCards == 1 ? 'card' : 'cards'}/day',
                         onTap: () => _openDailyGoalSheet(context, repo.dailyGoalCards),
                       ),
                       Divider(color: AppColors.borderSubtle, height: 1, indent: 56),
@@ -180,7 +181,8 @@ class SettingsScreen extends StatelessWidget {
                         icon: Icons.restart_alt_rounded,
                         iconColor: AppColors.warning,
                         title: 'Reset All Study Progress',
-                        valueText: '${repo.totalCardsCount} cards',
+                        valueText:
+                            '${repo.totalCardsCount} ${repo.totalCardsCount == 1 ? 'card' : 'cards'}',
                         onTap: repo.totalCardsCount == 0
                             ? null
                             : () => _confirmResetAllProgress(context),
@@ -206,7 +208,6 @@ class SettingsScreen extends StatelessWidget {
                         icon: Icons.info_outline_rounded,
                         iconColor: AppColors.accentCyan,
                         title: 'About Recall & Features',
-                        valueText: 'v2.6.0',
                         onTap: () => _openAboutRecallSheet(context),
                       ),
                     ],
@@ -275,7 +276,7 @@ class SettingsScreen extends StatelessWidget {
     required IconData icon,
     required Color iconColor,
     required String title,
-    required String valueText,
+    String? valueText,
     required VoidCallback? onTap,
   }) {
     return Material(
@@ -296,11 +297,13 @@ class SettingsScreen extends StatelessWidget {
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              valueText,
-              style: AppTypography.bodySmall.copyWith(color: AppColors.textMuted),
-            ),
-            const SizedBox(width: 4),
+            if (valueText != null && valueText.isNotEmpty) ...[
+              Text(
+                valueText,
+                style: AppTypography.bodySmall.copyWith(color: AppColors.textMuted),
+              ),
+              const SizedBox(width: 4),
+            ],
             Icon(Icons.chevron_right_rounded, color: AppColors.textMuted, size: 20),
           ],
         ),
@@ -512,11 +515,11 @@ class SettingsScreen extends StatelessWidget {
                   Navigator.of(context).pop();
                   ToastFeedback.showSuccess(
                     context,
-                    'Daily goal updated to $count cards/day.',
+                    'Daily goal updated to $count ${count == 1 ? 'card' : 'cards'}/day.',
                   );
                 },
                 title: Text(
-                  '$count cards per day',
+                  '$count ${count == 1 ? 'card' : 'cards'} per day',
                   style: AppTypography.titleMedium.copyWith(
                     color: selected ? AppColors.primary : AppColors.textPrimary,
                   ),
@@ -537,7 +540,7 @@ class SettingsScreen extends StatelessWidget {
     CurvedBottomSheet.show<void>(
       context: context,
       title: 'About Recall',
-      subtitle: 'Version 2.6.0 • Study smarter, remember longer.',
+      subtitle: 'Study smarter, remember longer.',
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -581,7 +584,7 @@ class SettingsScreen extends StatelessWidget {
             color: AppColors.danger,
             title: 'Weakness Radar & Quiz Mode',
             desc:
-                'Automatically detects cards with ≥ 40% failure rate or low Ease Factor (< 1.9) so you can drill weak concepts.',
+                'Automatically detects cards after 2+ reviews with ≥ 40% failure rate or low Ease Factor (< 1.9) so you can drill weak concepts.',
           ),
         ],
       ),

@@ -3,6 +3,7 @@ import '../../core/models/flashcard_model.dart';
 import '../../core/services/study_repository.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
+import '../../core/theme/theme_service.dart';
 import '../../core/widgets/app_badge.dart';
 import '../../core/widgets/app_button.dart';
 import '../study/study_session_screen.dart';
@@ -12,8 +13,9 @@ class AnalyticsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    Theme.of(context);
     return AnimatedBuilder(
-      animation: StudyRepository.instance,
+      animation: Listenable.merge([StudyRepository.instance, ThemeService.instance]),
       builder: (context, _) {
         final repo = StudyRepository.instance;
         final weakCards = repo.weakCards;
@@ -54,7 +56,7 @@ class AnalyticsScreen extends StatelessWidget {
                           value: totalCards > 0
                               ? '${((mastered / totalCards) * 100).round()}%'
                               : '0%',
-                          subtitle: '$mastered of $totalCards cards',
+                          subtitle: '$mastered of $totalCards ${totalCards == 1 ? 'card' : 'cards'}',
                           color: AppColors.isDarkMode ? AppColors.primaryLight : const Color(0xFFD97706),
                           icon: Icons.military_tech_outlined,
                         ),
@@ -78,7 +80,7 @@ class AnalyticsScreen extends StatelessWidget {
                           children: [
                             Text('Weakness Radar', style: AppTypography.titleMedium),
                             Text(
-                              'Cards where recall failure rate is ≥ 40%',
+                              'Cards with ≥2 reviews and failure rate ≥ 40% (or EF < 1.9)',
                               style: AppTypography.bodySmall.copyWith(color: AppColors.textMuted),
                             ),
                           ],
@@ -120,7 +122,7 @@ class AnalyticsScreen extends StatelessWidget {
                                 Text('Zero Weak Spots Detected', style: AppTypography.titleMedium),
                                 const SizedBox(height: 2),
                                 Text(
-                                  'Your recall across all active decks is above threshold.',
+                                  'No persistent weak spots found. Concepts are flagged after at least 2 reviews with a failure rate ≥ 40% or low ease factor.',
                                   style: AppTypography.bodySmall,
                                 ),
                               ],
@@ -130,57 +132,7 @@ class AnalyticsScreen extends StatelessWidget {
                       ),
                     )
                   else
-                    ...weakCards.map((card) {
-                      final deck = repo.getDeckById(card.deckId);
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: AppColors.bgCard,
-                          borderRadius: BorderRadius.circular(18),
-                          border: Border.all(color: AppColors.danger.withValues(alpha: 0.45)),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                AppBadge.weakCard(),
-                                Text(
-                                  '${(card.failureRate * 100).round()}% fail rate',
-                                  style: AppTypography.badge.copyWith(color: AppColors.danger),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 10),
-                            Text(
-                              card.question,
-                              style: AppTypography.titleMedium.copyWith(fontSize: 15),
-                            ),
-                            const SizedBox(height: 6),
-                            Text(
-                              'Deck: ${deck?.title ?? "General"} • Ease factor: ${card.easeFactor.toStringAsFixed(2)}',
-                              style: AppTypography.bodySmall.copyWith(color: AppColors.textMuted),
-                            ),
-                            const SizedBox(height: 12),
-                            if (deck != null)
-                              AppButton(
-                                label: 'Drill This Card Now',
-                                icon: Icons.bolt_rounded,
-                                variant: AppButtonVariant.outline,
-                                onPressed: () {
-                                  Navigator.of(context).push(
-                                    MaterialPageRoute<void>(
-                                      builder: (_) => StudySessionScreen(deck: deck),
-                                    ),
-                                  );
-                                },
-                              ),
-                          ],
-                        ),
-                      );
-                    }),
+                    _WeakCardsSection(weakCards: weakCards, repo: repo),
 
                   const SizedBox(height: 24),
                   // SM-2 Spaced Repetition Distribution
@@ -394,7 +346,7 @@ class AnalyticsScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 8),
-            Text('$count cards', style: AppTypography.badge.copyWith(color: color)),
+            Text('$count ${count == 1 ? 'card' : 'cards'}', style: AppTypography.badge.copyWith(color: color)),
           ],
         ),
         const SizedBox(height: 6),
@@ -414,5 +366,132 @@ class AnalyticsScreen extends StatelessWidget {
   double allCardsCountSafeRatio(int count, int total) {
     if (total <= 0 || count <= 0) return 0.0;
     return (count / total).clamp(0.0, 1.0);
+  }
+}
+
+class _WeakCardsSection extends StatefulWidget {
+  final List<Flashcard> weakCards;
+  final StudyRepository repo;
+
+  const _WeakCardsSection({
+    required this.weakCards,
+    required this.repo,
+  });
+
+  @override
+  State<_WeakCardsSection> createState() => _WeakCardsSectionState();
+}
+
+class _WeakCardsSectionState extends State<_WeakCardsSection> {
+  bool _showAll = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final sorted = List<Flashcard>.from(widget.weakCards)
+      ..sort((a, b) {
+        final failCompare = b.failureRate.compareTo(a.failureRate);
+        if (failCompare != 0) return failCompare;
+        return a.easeFactor.compareTo(b.easeFactor);
+      });
+
+    final displayList = (_showAll || sorted.length <= 8)
+        ? sorted
+        : sorted.take(8).toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (sorted.length > 8) ...[
+          Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Flexible(
+                  child: Text(
+                    _showAll
+                        ? 'Showing all ${sorted.length} struggling concepts'
+                        : 'Prioritizing top 8 of ${sorted.length} critical concepts',
+                    style: AppTypography.bodySmall.copyWith(
+                      color: AppColors.isDarkMode ? AppColors.primaryLight : const Color(0xFFB45309),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                TextButton(
+                  onPressed: () => setState(() => _showAll = !_showAll),
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  child: Text(
+                    _showAll ? 'Show Top 8' : 'Show All (${sorted.length})',
+                    style: AppTypography.badge.copyWith(
+                      color: AppColors.primary,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+        ...displayList.map((card) {
+          final deck = widget.repo.getDeckById(card.deckId);
+          return Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.bgCard,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: AppColors.danger.withValues(alpha: 0.45)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    AppBadge.weakCard(),
+                    Text(
+                      '${(card.failureRate * 100).round()}% fail rate',
+                      style: AppTypography.badge.copyWith(color: AppColors.danger),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  card.question,
+                  style: AppTypography.titleMedium.copyWith(fontSize: 15),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Deck: ${deck?.title ?? "General"} • Ease factor: ${card.easeFactor.toStringAsFixed(2)}',
+                  style: AppTypography.bodySmall.copyWith(color: AppColors.textMuted),
+                ),
+                const SizedBox(height: 12),
+                if (deck != null)
+                  AppButton(
+                    label: 'Drill This Card Now',
+                    icon: Icons.bolt_rounded,
+                    variant: AppButtonVariant.outline,
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => StudySessionScreen(
+                            deck: deck,
+                            targetCardId: card.id,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+              ],
+            ),
+          );
+        }),
+      ],
+    );
   }
 }

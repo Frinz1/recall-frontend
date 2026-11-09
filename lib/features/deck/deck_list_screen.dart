@@ -3,6 +3,7 @@ import '../../core/models/flashcard_model.dart';
 import '../../core/services/study_repository.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
+import '../../core/theme/theme_service.dart';
 import '../../core/widgets/empty_state_view.dart';
 import '../../core/widgets/quick_create_sheet.dart';
 import '../../core/widgets/toast_feedback.dart';
@@ -23,8 +24,9 @@ class _DeckListScreenState extends State<DeckListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    Theme.of(context);
     return AnimatedBuilder(
-      animation: StudyRepository.instance,
+      animation: Listenable.merge([StudyRepository.instance, ThemeService.instance]),
       builder: (context, _) {
         final repo = StudyRepository.instance;
         final subjects = repo.subjects;
@@ -524,7 +526,7 @@ class _DeckListScreenState extends State<DeckListScreen> {
                 const SizedBox(height: 5),
                 Text(
                   deck.description.isEmpty
-                      ? 'Spaced repetition flashcard collection (${deck.totalCards} cards)'
+                      ? 'Spaced repetition flashcard collection (${deck.totalCards} ${deck.totalCards == 1 ? 'card' : 'cards'})'
                       : deck.description,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
@@ -555,7 +557,7 @@ class _DeckListScreenState extends State<DeckListScreen> {
                     const SizedBox(width: 8),
                     Flexible(
                       child: Text(
-                        '${deck.totalCards} cards • ${deck.masteredCount} mastered',
+                        '${deck.totalCards} ${deck.totalCards == 1 ? 'card' : 'cards'} • ${deck.masteredCount} mastered',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: AppTypography.bodySmall.copyWith(

@@ -33,6 +33,17 @@ class FlipCardWidget extends StatelessWidget {
     }
   }
 
+  IconData _resolveTypeIcon(FlashcardType type) {
+    switch (type) {
+      case FlashcardType.definition:
+        return Icons.menu_book_rounded;
+      case FlashcardType.codeSnippet:
+        return Icons.code_rounded;
+      case FlashcardType.standard:
+        return Icons.school_rounded;
+    }
+  }
+
   Color _resolveStatusDotColor(Flashcard c) {
     if (c.isNewCard) return AppColors.accentCyan;
     switch (c.masteryStatus) {
@@ -185,39 +196,44 @@ class FlipCardWidget extends StatelessWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Top Header Row: Sleek Capsule Pill + Circular 36x36 Flip Hint Button
+                  // Top Header Row: Clean Educational Badge + Circular 36x36 Flip Hint Button
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Flexible(
                         child: Container(
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 6,
+                            horizontal: 11,
+                            vertical: 5,
                           ),
                           decoration: BoxDecoration(
                             color: AppColors.isDarkMode
-                                ? Colors.white.withValues(alpha: 0.07)
-                                : Colors.black.withValues(alpha: 0.05),
-                            borderRadius: BorderRadius.circular(999),
+                                ? AppColors.bgSurface2.withValues(alpha: 0.85)
+                                : AppColors.bgSurface1.withValues(alpha: 0.90),
+                            borderRadius: BorderRadius.circular(10),
                             border: Border.all(
                               color: AppColors.isDarkMode
-                                  ? Colors.white.withValues(alpha: 0.14)
-                                  : AppColors.borderSubtle,
+                                  ? AppColors.borderSubtle
+                                  : AppColors.borderSubtle.withValues(alpha: 0.8),
+                              width: 1.1,
                             ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: AppColors.isDarkMode ? 0.20 : 0.04),
+                                blurRadius: 4,
+                                offset: const Offset(0, 1),
+                              ),
+                            ],
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Container(
-                                width: 8,
-                                height: 8,
-                                decoration: BoxDecoration(
-                                  color: dotColor,
-                                  shape: BoxShape.circle,
-                                ),
+                              Icon(
+                                _resolveTypeIcon(card.cardType),
+                                size: 14,
+                                color: dotColor,
                               ),
-                              const SizedBox(width: 7),
+                              const SizedBox(width: 6),
                               Flexible(
                                 child: Text(
                                   '${_resolveTypeBadgeLabel(card.cardType)} • ${_resolveStatusLabel(card)}',
@@ -225,8 +241,9 @@ class FlipCardWidget extends StatelessWidget {
                                   overflow: TextOverflow.ellipsis,
                                   style: AppTypography.badge.copyWith(
                                     color: AppColors.textPrimary,
-                                    fontSize: 10.5,
-                                    letterSpacing: 0.7,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    letterSpacing: 0.3,
                                   ),
                                 ),
                               ),
@@ -430,11 +447,19 @@ class FlipCardWidget extends StatelessWidget {
                             vertical: 5,
                           ),
                           decoration: BoxDecoration(
-                            color: AppColors.success.withValues(alpha: 0.16),
-                            borderRadius: BorderRadius.circular(999),
+                            color: AppColors.success.withValues(alpha: 0.14),
+                            borderRadius: BorderRadius.circular(10),
                             border: Border.all(
                               color: AppColors.success.withValues(alpha: 0.45),
+                              width: 1.1,
                             ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppColors.success.withValues(alpha: 0.08),
+                                blurRadius: 4,
+                                offset: const Offset(0, 1),
+                              ),
+                            ],
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
@@ -452,8 +477,9 @@ class FlipCardWidget extends StatelessWidget {
                                   overflow: TextOverflow.ellipsis,
                                   style: AppTypography.badge.copyWith(
                                     color: AppColors.success,
-                                    fontSize: 10.5,
-                                    letterSpacing: 0.8,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    letterSpacing: 0.3,
                                   ),
                                 ),
                               ),
