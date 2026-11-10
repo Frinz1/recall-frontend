@@ -97,13 +97,17 @@ class SM2Engine {
 
       nextRepetitions = currentRepetitions + 1;
 
-      // Transparent 4-Streak Rule: 4 consecutive successful reviews graduate to Mastered,
-      // as long as the graduating answer is Good or Easy ("Hard" means the user still struggled).
-      if (nextRepetitions >= 4 && rating != RecallRating.hard) {
-        nextStatus = CardMasteryStatus.mastered;
-      } else {
-        nextStatus = CardMasteryStatus.reviewing;
-      }
+      // Mastery Gate — all three conditions must be true:
+      //   1. 4+ consecutive successful reviews (streak proves consistency)
+      //   2. EF >= 2.0 (card is no longer a struggle card)
+      //   3. Interval >= 21 days (proven long-term retention — recalled after 3+ weeks)
+      //   "Hard" is excluded: struggling but passing is not mastery.
+      final isTrulyMastered = nextRepetitions >= 4 &&
+          rating != RecallRating.hard &&
+          newEaseFactor >= 2.0 &&
+          nextIntervalDays >= 21;
+
+      nextStatus = isTrulyMastered ? CardMasteryStatus.mastered : CardMasteryStatus.reviewing;
     }
 
     final nextReviewDate = now.add(Duration(days: nextIntervalDays));

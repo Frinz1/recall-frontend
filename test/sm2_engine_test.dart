@@ -72,15 +72,42 @@ void main() {
       expect(ef, greaterThanOrEqualTo(1.3));
     });
 
-    test('4th consecutive Good/Easy graduates to Mastered regardless of ease factor', () {
+    test('4th consecutive Good/Easy with EF >= 2.0 and interval >= 21d graduates to Mastered', () {
+      // reps=3, interval=14, EF=2.5 → newEF=2.5, nextInterval=round(14*2.5)=35 >= 21 → mastered
       final result = SM2Engine.calculateNextReview(
         rating: RecallRating.good,
         currentRepetitions: 3,
         currentIntervalDays: 14,
-        currentEaseFactor: 1.9, // previously blocked by hidden EF >= 2.3 gate
+        currentEaseFactor: 2.5,
       );
       expect(result.repetitions, 4);
       expect(result.status, CardMasteryStatus.mastered);
+      expect(result.intervalDays, greaterThanOrEqualTo(21));
+      expect(result.easeFactor, greaterThanOrEqualTo(2.0));
+    });
+
+    test('4th consecutive Good with EF < 2.0 does NOT graduate (struggle card gate)', () {
+      // reps=3, interval=14, EF=1.9 → newEF=1.9 < 2.0 → NOT mastered
+      final result = SM2Engine.calculateNextReview(
+        rating: RecallRating.good,
+        currentRepetitions: 3,
+        currentIntervalDays: 14,
+        currentEaseFactor: 1.9,
+      );
+      expect(result.repetitions, 4);
+      expect(result.status, CardMasteryStatus.reviewing);
+    });
+
+    test('4th consecutive Good with interval < 21d does NOT graduate (short-term memory gate)', () {
+      // reps=3, interval=5, EF=2.5 → nextInterval=round(5*2.5)=13 < 21 → NOT mastered
+      final result = SM2Engine.calculateNextReview(
+        rating: RecallRating.good,
+        currentRepetitions: 3,
+        currentIntervalDays: 5,
+        currentEaseFactor: 2.5,
+      );
+      expect(result.repetitions, 4);
+      expect(result.status, CardMasteryStatus.reviewing);
     });
 
     test('A Hard rating never graduates a card to Mastered', () {
